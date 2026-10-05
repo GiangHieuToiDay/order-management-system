@@ -31,6 +31,7 @@ public interface ProductMapper {
 
     @Mapping(source = "category.id", target = "categoryId")
     @Mapping(source = "category.name", target = "categoryName")
+    @Mapping(target = "isAvailable", expression = "java(product.getStatus() != null && product.getStatus() == com.trainning.ordersystem.entity.enums.ProductStatus.ACTIVE && product.getStockQuantity() != null && product.getStockQuantity() > 0)")
     ProductDetailResponse toDetailResponse(Product product);
 
     @Mapping(target = "id", ignore = true)

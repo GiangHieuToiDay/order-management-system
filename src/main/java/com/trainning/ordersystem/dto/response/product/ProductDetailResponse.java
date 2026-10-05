@@ -19,7 +19,9 @@ public class ProductDetailResponse {
     private String name;
     private String sku;
     private BigDecimal price;
+    private String unit;
     private Integer stockQuantity;
+    private Boolean isAvailable;
     private String description;
     private String imageUrl;
     private Long categoryId;

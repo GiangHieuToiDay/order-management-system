@@ -34,6 +34,7 @@ public enum ErrorCode {
     CATEGORY_HAS_PRODUCTS(2003, "Danh mục đang chứa sản phẩm, không thể xóa", HttpStatus.BAD_REQUEST),
     PRODUCT_NOT_FOUND(2004, "Sản phẩm không tồn tại", HttpStatus.NOT_FOUND),
     SKU_ALREADY_EXISTS(2005, "Mã SKU sản phẩm đã tồn tại", HttpStatus.BAD_REQUEST),
+    PRODUCT_INACTIVE(2006, "Sản phẩm hiện đang ngừng kinh doanh", HttpStatus.BAD_REQUEST),
 
     // ===================================================================
     // 4. KHO HÀNG (3xxx)
