@@ -17,9 +17,11 @@ import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.mapper.UserMapper;
 import com.trainning.ordersystem.repository.CustomerRepository;
-import com.trainning.ordersystem.repository.RoleRepository;
 import com.trainning.ordersystem.repository.UserRepository;
 import com.trainning.ordersystem.service.UserService;
+import com.trainning.ordersystem.specification.CustomerSpecification;
+import com.trainning.ordersystem.specification.RoleSpecification;
+import com.trainning.ordersystem.specification.UserSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,48 +40,29 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final CustomerRepository customerRepository;
+    private final UserSpecification userSpecification;
+    private final RoleSpecification roleSpecification;
+    private final CustomerSpecification customerSpecification;
     private final UserMapper userMapper;
 
-    // ===================================================================
-    // 1. XÁC THỰC & ĐĂNG KÝ
-    // ===================================================================
 
     @Override
     @Transactional
     public UserProfileResponse registerCustomer(RegisterCustomerRequest request) {
-        log.info("Khách hàng đăng ký tài khoản mới: username={}", request.getUsername());
+        log.info("Khách hàng đăng ký tài khoản mới: email={}", request.getEmail());
 
-        // Rule 1: Kiểm tra username/email đã tồn tại chưa
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS, "Tên đăng nhập '" + request.getUsername() + "' đã được sử dụng");
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS, "Email '" + request.getEmail() + "' đã được sử dụng");
-        }
+        userSpecification.validateRegistration(request);
+        Role role = roleSpecification.findRoleByName("CUSTOMER");
 
-        // Rule 1: Luôn luôn chỉ gán role CUSTOMER cho khách tự đăng ký (không cho đăng ký Staff/Admin)
-        Role customerRole = roleRepository.findByName("CUSTOMER")
-                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND, "Không tìm thấy vai trò CUSTOMER"));
-
-        // Tạo User ở trạng thái ACTIVE
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword()); // TODO: Mã hóa bằng BCryptPasswordEncoder khi tích hợp Security
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPhone(request.getPhone());
-        user.setRole(customerRole);
+        User user = userMapper.toEntity(request);
+        user.setRole(role);
         user.setStatus(UserStatus.ACTIVE);
         User savedUser = userRepository.save(user);
 
-        // Tạo hồ sơ Customer tương ứng với MembershipLevel = REGULAR
-        Customer customer = new Customer();
-        customer.setUser(savedUser);
-        customer.setAddress(request.getAddress());
-        customer.setMembershipLevel(MembershipLevel.REGULAR);
-        Customer savedCustomer = customerRepository.save(customer);
+        Customer savedCustomer = customerRepository.save(
+                customerSpecification.tranferCustomerFromUser(savedUser, request.getAddress())
+        );
 
         UserProfileResponse response = userMapper.toProfileResponse(savedUser);
         userMapper.enrichWithCustomer(savedCustomer, response);
@@ -88,35 +71,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        log.info("Người dùng đăng nhập: username={}", request.getUsername());
+        log.info("Người dùng đăng nhập: email={}", request.getEmail());
 
-        // Rule 2: Kiểm tra tài khoản tồn tại
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
-
-        // Rule 2: Kiểm tra password
-        if (!user.getPassword().equals(request.getPassword())) {
-            throw new AppException(ErrorCode.INVALID_CREDENTIALS);
-        }
-
-        // Rule 2: Kiểm tra UserStatus (Nếu LOCKED → từ chối đăng nhập)
-        if (user.getStatus() == UserStatus.LOCKED) {
-            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-        }
+        User user = userSpecification.getUserByEmail(request.getEmail());
+        userSpecification.validateLoginCredentials(user, request.getPassword());
 
         return AuthResponse.builder()
-                .accessToken("MOCK_TOKEN_" + user.getUsername()) // TODO: Sinh JWT token thật ở bước Security
+                .accessToken("MOCK_TOKEN_" + user.getEmail()) // TODO: Sinh JWT token thật ở bước Security
                 .tokenType("Bearer")
                 .userId(user.getId())
-                .username(user.getUsername())
+                .email(user.getEmail())
                 .role(user.getRole().getName())
                 .fullName(user.getFullName())
                 .build();
     }
 
-    // ===================================================================
-    // 2. TRANG CÁ NHÂN (My Profile)
-    // ===================================================================
 
     @Override
     public UserProfileResponse getMyProfile() {
@@ -129,18 +98,11 @@ public class UserServiceImpl implements UserService {
     public UserProfileResponse updateMyProfile(UpdateProfileRequest request) {
         User currentUser = getCurrentUser();
 
-        // Rule 3: Chỉ cho sửa full_name, phone, address. Tuyệt đối không sửa role, status, membership_level
         currentUser.setFullName(request.getFullName());
         currentUser.setPhone(request.getPhone());
         userRepository.save(currentUser);
 
-        // Nếu là Customer thì cập nhật thêm địa chỉ nhận hàng
-        customerRepository.findByUserId(currentUser.getId()).ifPresent(customer -> {
-            if (request.getAddress() != null) {
-                customer.setAddress(request.getAddress());
-                customerRepository.save(customer);
-            }
-        });
+        customerSpecification.updateAddressIfExists(currentUser.getId(), request.getAddress());
 
         return toUserProfileWithCustomerInfo(currentUser);
     }
@@ -150,57 +112,37 @@ public class UserServiceImpl implements UserService {
     public void changePassword(ChangePasswordRequest request) {
         User currentUser = getCurrentUser();
 
-        // Xác thực mật khẩu cũ
-        if (!currentUser.getPassword().equals(request.getOldPassword())) {
-            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Mật khẩu hiện tại không chính xác");
-        }
-
-        // Kiểm tra khớp xác nhận mật khẩu mới
-        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Mật khẩu xác nhận không khớp với mật khẩu mới");
-        }
+        userSpecification.validatePasswordChange(
+                currentUser,
+                request.getOldPassword(),
+                request.getNewPassword(),
+                request.getConfirmPassword()
+        );
 
         currentUser.setPassword(request.getNewPassword());
         userRepository.save(currentUser);
-        log.info("Người dùng '{}' đã đổi mật khẩu thành công", currentUser.getUsername());
+        log.info("Người dùng '{}' đã đổi mật khẩu thành công", currentUser.getEmail());
     }
 
-    // ===================================================================
-    // 3. QUẢN TRỊ NGƯỜI DÙNG (Admin)
-    // ===================================================================
 
     @Override
     @Transactional
     public UserProfileResponse createUser(CreateUserRequest request) {
-        log.info("Admin tạo tài khoản mới: username={}, roleId={}", request.getUsername(), request.getRoleId());
+        log.info("Admin tạo tài khoản mới: email={}, roleId={}", request.getEmail(), request.getRoleId());
 
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTS, "Tên đăng nhập '" + request.getUsername() + "' đã tồn tại");
-        }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS, "Email '" + request.getEmail() + "' đã tồn tại");
-        }
+        userSpecification.validateEmailNotExists(request.getEmail());
+        Role role = roleSpecification.findRoleById(request.getRoleId());
 
-        Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND, "Không tìm thấy vai trò với id = " + request.getRoleId()));
-
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPhone(request.getPhone());
+        User user = userMapper.toEntity(request);
         user.setRole(role);
         user.setStatus(UserStatus.ACTIVE);
         User savedUser = userRepository.save(user);
 
-        // Rule 4: Nếu tạo Customer thì mới phát sinh hồ sơ Customer tương ứng
         UserProfileResponse response = userMapper.toProfileResponse(savedUser);
         if ("CUSTOMER".equalsIgnoreCase(role.getName())) {
-            Customer customer = new Customer();
-            customer.setUser(savedUser);
-            customer.setMembershipLevel(MembershipLevel.REGULAR);
-            Customer savedCustomer = customerRepository.save(customer);
+            Customer savedCustomer = customerRepository.save(
+                    customerSpecification.tranferCustomerFromUser(savedUser, null)
+            );
             userMapper.enrichWithCustomer(savedCustomer, response);
         }
 
@@ -209,14 +151,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getUserById(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Không tìm thấy người dùng với id = " + userId));
+        User user = userSpecification.getUserById(userId);
         return toUserProfileWithCustomerInfo(user);
     }
 
     @Override
     public PageResponse<UserProfileResponse> getUsers(int page, int size, String keyword, Long roleId, UserStatus status) {
-        // Rule 5: Tra cứu người dùng kết hợp keyword, role, status và phân trang
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<User> usersPage = userRepository.searchUsers(keyword, roleId, status, pageable);
 
@@ -238,29 +178,18 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void updateUserStatus(Long userId, UserStatus status) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Không tìm thấy người dùng với id = " + userId));
-
-        // Rule 6: Không cho phép Admin tự khóa tài khoản của chính mình
-        User currentUser = getCurrentUserSafe();
-        if (currentUser != null && currentUser.getId().equals(userId) && status == UserStatus.LOCKED) {
-            throw new AppException(ErrorCode.CANNOT_LOCK_CURRENT_USER);
-        }
+        User user = userSpecification.getUserById(userId);
+        userSpecification.validateStatusUpdate(user, getCurrentUserSafe(), status);
 
         user.setStatus(status);
         userRepository.save(user);
-        log.info("Admin đã cập nhật trạng thái người dùng '{}' thành {}", user.getUsername(), status);
+        log.info("Admin đã cập nhật trạng thái người dùng '{}' thành {}", user.getEmail(), status);
     }
 
-    // ===================================================================
-    // 4. QUẢN LÝ KHÁCH HÀNG (Staff / Admin)
-    // ===================================================================
 
     @Override
     public UserProfileResponse getCustomerById(Long customerId) {
-        // Rule 7: Staff/Admin xem thông tin của một Customer cụ thể khi xử lý đơn hàng
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND, "Không tìm thấy khách hàng với id = " + customerId));
+        Customer customer = customerSpecification.findCustomerById(customerId);
         UserProfileResponse response = userMapper.toProfileResponse(customer.getUser());
         userMapper.enrichWithCustomer(customer, response);
         return response;
@@ -269,34 +198,23 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserProfileResponse updateCustomerMembership(Long customerId, MembershipLevel membershipLevel) {
-        // Rule 8: Staff/Admin có thể chủ động nâng/hạ hạng thành viên (REGULAR, SILVER, GOLD)
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND, "Không tìm thấy khách hàng với id = " + customerId));
-
+        Customer customer = customerSpecification.findCustomerById(customerId);
         customer.setMembershipLevel(membershipLevel);
         Customer savedCustomer = customerRepository.save(customer);
-        log.info("Đã cập nhật hạng thành viên của khách hàng '{}' thành {}", customer.getUser().getUsername(), membershipLevel);
+        log.info("Đã cập nhật hạng thành viên của khách hàng '{}' thành {}", customer.getUser().getEmail(), membershipLevel);
 
         UserProfileResponse response = userMapper.toProfileResponse(savedCustomer.getUser());
         userMapper.enrichWithCustomer(savedCustomer, response);
         return response;
     }
 
-    // ===================================================================
-    // HELPER METHODS
-    // ===================================================================
-
     private UserProfileResponse toUserProfileWithCustomerInfo(User user) {
         UserProfileResponse response = userMapper.toProfileResponse(user);
-        customerRepository.findByUserId(user.getId())
+        customerSpecification.findCustomerByUserId(user.getId())
                 .ifPresent(customer -> userMapper.enrichWithCustomer(customer, response));
         return response;
     }
 
-    /**
-     * Lấy người dùng hiện tại đang đăng nhập.
-     * Khi chưa gắn JWT Security context, tạm thời lấy user đầu tiên trong DB để test luồng.
-     */
     private User getCurrentUser() {
         User user = getCurrentUserSafe();
         if (user == null) {
