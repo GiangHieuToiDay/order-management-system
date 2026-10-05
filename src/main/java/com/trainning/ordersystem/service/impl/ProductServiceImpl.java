@@ -12,6 +12,7 @@ import com.trainning.ordersystem.entity.enums.ProductStatus;
 import com.trainning.ordersystem.mapper.ProductMapper;
 import com.trainning.ordersystem.repository.ProductRepository;
 import com.trainning.ordersystem.service.ProductService;
+import com.trainning.ordersystem.service.RedisService;
 import com.trainning.ordersystem.specification.CategorySpecification;
 import com.trainning.ordersystem.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -32,7 +38,9 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final ProductSpecification productSpecification;
     private final CategorySpecification categorySpecification;
+    private final RedisService redisService;
     private final ProductMapper productMapper;
+    private final ObjectMapper objectMapper;
 
 
     @Override
@@ -59,15 +67,21 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public PageResponse<ProductSummaryResponse> getProducts(ProductFilterRequest request) {
-        Sort.Direction direction = "ASC".equalsIgnoreCase(request.getSortDirection())
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
 
-        String sortBy = (request.getSortBy() != null && !request.getSortBy().isBlank())
-                ? request.getSortBy()
-                : "id";
+        String cacheKey = redisService.buildCacheKeyFilterProduct(request);
 
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(direction, sortBy));
+        Object cachedData = redisService.get(cacheKey);
+
+        if (cachedData != null) {
+            try {
+                return objectMapper.readValue(
+                        cachedData.toString(),
+                        new TypeReference<PageResponse<ProductSummaryResponse>>() {}
+                );
+            } catch (Exception e) {
+                log.error("Lỗi parse cache từ Redis với key={}: {}", cacheKey, e.getMessage());
+            }
+        }
 
         Page<Product> productPage = productRepository.searchProducts(
                 request.getKeyword(),
@@ -75,18 +89,25 @@ public class ProductServiceImpl implements ProductService {
                 request.getStatus(),
                 request.getMinPrice(),
                 request.getMaxPrice(),
-                pageable
+                buildPageable(request)
         );
 
-        return PageResponse.<ProductSummaryResponse>builder()
-                .content(productMapper.toSummaryResponseList(productPage.getContent()))
-                .pageNumber(productPage.getNumber())
-                .pageSize(productPage.getSize())
-                .totalElements(productPage.getTotalElements())
-                .totalPages(productPage.getTotalPages())
-                .isFirst(productPage.isFirst())
-                .isLast(productPage.isLast())
-                .build();
+        PageResponse<ProductSummaryResponse> response =
+                buildPageResponse(productPage);
+
+        try {
+            String jsonString = objectMapper.writeValueAsString(response);
+            redisService.set(
+                    cacheKey,
+                    jsonString,
+                    10,
+                    TimeUnit.MINUTES
+            );
+        } catch (Exception e) {
+            log.error("Lỗi serialize lưu vào Redis cache với key={}: {}", cacheKey, e.getMessage());
+        }
+
+        return response;
     }
 
 
@@ -150,4 +171,36 @@ public class ProductServiceImpl implements ProductService {
         Product product = productSpecification.getProductById(productId);
         return productSpecification.isAvailable(product, quantity);
     }
+
+    private Pageable buildPageable(ProductFilterRequest request) {
+
+        Sort.Direction direction = "ASC".equalsIgnoreCase(request.getSortDirection())
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        String sortBy = request.getSortBy() != null && !request.getSortBy().isBlank()
+                ? request.getSortBy()
+                : "id";
+
+        return PageRequest.of(
+                request.getPage(),
+                request.getSize(),
+                Sort.by(direction, sortBy)
+        );
+    }
+
+    private PageResponse<ProductSummaryResponse> buildPageResponse(
+            Page<Product> productPage
+    ) {
+        return PageResponse.<ProductSummaryResponse>builder()
+                .content(productMapper.toSummaryResponseList(productPage.getContent()))
+                .pageNumber(productPage.getNumber())
+                .pageSize(productPage.getSize())
+                .totalElements(productPage.getTotalElements())
+                .totalPages(productPage.getTotalPages())
+                .isFirst(productPage.isFirst())
+                .isLast(productPage.isLast())
+                .build();
+    }
+
 }

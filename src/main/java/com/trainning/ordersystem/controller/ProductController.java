@@ -22,10 +22,6 @@ public class ProductController {
 
     private final ProductService productService;
 
-    /**
-     * 1. Tạo sản phẩm mới
-     * Actor: Admin / Staff
-     */
     @PostMapping
     public ResponseEntity<ApiResponse<ProductDetailResponse>> createProduct(
             @Valid @RequestBody ProductCreateRequest request) {
@@ -34,10 +30,7 @@ public class ProductController {
                 .body(ApiResponse.created("Tạo sản phẩm thành công", response));
     }
 
-    /**
-     * 2. Xem danh sách sản phẩm (Search / Filter / Sort / Pagination)
-     * Actor: Guest / Customer / Staff / Admin
-     */
+
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getProducts(
             @ModelAttribute ProductFilterRequest filterRequest) {
@@ -45,20 +38,14 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách sản phẩm thành công", response));
     }
 
-    /**
-     * 3. Xem chi tiết sản phẩm
-     * Actor: Guest / Customer / Staff / Admin
-     */
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProductById(@PathVariable Long id) {
         ProductDetailResponse response = productService.getProductById(id);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin sản phẩm thành công", response));
     }
 
-    /**
-     * 4. Cập nhật thông tin sản phẩm
-     * Actor: Admin / Staff
-     */
+
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> updateProduct(
             @PathVariable Long id,
@@ -67,10 +54,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật thông tin sản phẩm thành công", response));
     }
 
-    /**
-     * 5. Thay đổi trạng thái sản phẩm (ACTIVE ↔ INACTIVE)
-     * Actor: Admin
-     */
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> updateProductStatus(
             @PathVariable Long id,
@@ -79,10 +63,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái sản phẩm thành công", response));
     }
 
-    /**
-     * 6. Gán sản phẩm vào Category
-     * Actor: Admin / Staff
-     */
+
     @PatchMapping("/{id}/category/{categoryId}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> assignCategory(
             @PathVariable Long id,
@@ -91,10 +72,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Gán danh mục cho sản phẩm thành công", response));
     }
 
-    /**
-     * 7. Kiểm tra tính khả dụng của sản phẩm (sản phẩm ACTIVE và tồn kho >= số lượng)
-     * Actor: Guest / Customer / Staff / Admin / Internal Services
-     */
+
     @GetMapping("/{id}/availability")
     public ResponseEntity<ApiResponse<Boolean>> checkProductAvailability(
             @PathVariable Long id,
