@@ -2,7 +2,6 @@ package com.trainning.ordersystem.dto.request.category;
 
 import com.trainning.ordersystem.entity.enums.CategoryStatus;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +21,6 @@ public class CategoryRequest {
     @Size(max = 255, message = "Mô tả tối đa 255 ký tự")
     private String description;
 
-    @NotNull(message = "Trạng thái danh mục không được để trống")
-    private CategoryStatus status;
+    @Builder.Default
+    private CategoryStatus status = CategoryStatus.ACTIVE;
 }
