@@ -6,13 +6,20 @@ import com.trainning.ordersystem.dto.request.order.CreateOrderRequest;
 import com.trainning.ordersystem.dto.request.order.OrderStatusUpdateRequest;
 import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
 import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
+import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
 import com.trainning.ordersystem.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import com.trainning.ordersystem.dto.response.order.OrderItemResponse;
+import com.trainning.ordersystem.service.OrderItemService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -20,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderItemService orderItemService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<OrderDetailResponse>> placeOrder(
@@ -82,5 +90,26 @@ public class OrderController {
             @Valid @RequestBody OrderStatusUpdateRequest request) {
         OrderDetailResponse response = orderService.updateOrderStatus(id, request, null);
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái đơn hàng thành công", response));
+    }
+
+    @GetMapping("/statistics/revenue")
+    public ResponseEntity<ApiResponse<List<OrderRevenueStatisticResponse>>> getRevenueStatistics(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "MONTH") String groupBy) {
+        List<OrderRevenueStatisticResponse> response = orderService.getRevenueStatistics(startDate, endDate, groupBy);
+        return ResponseEntity.ok(ApiResponse.ok("Thống kê doanh thu và tỷ lệ đơn hàng thành công", response));
+    }
+
+    @GetMapping("/{orderId}/items")
+    public ResponseEntity<ApiResponse<List<OrderItemResponse>>> getOrderItems(@PathVariable Long orderId) {
+        List<OrderItemResponse> response = orderItemService.getItemsByOrderId(orderId);
+        return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách sản phẩm trong đơn hàng thành công", response));
+    }
+
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<Long>> countOrdersByStatus(@RequestParam OrderStatus status) {
+        long count = orderService.countOrdersByStatus(status);
+        return ResponseEntity.ok(ApiResponse.ok("Đếm số lượng đơn hàng theo trạng thái thành công", count));
     }
 }

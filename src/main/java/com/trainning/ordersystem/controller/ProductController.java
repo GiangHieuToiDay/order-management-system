@@ -80,4 +80,12 @@ public class ProductController {
         boolean available = productService.checkProductAvailability(id, quantity);
         return ResponseEntity.ok(ApiResponse.ok("Kiểm tra tính khả dụng thành công", available));
     }
+
+    @PatchMapping("/{id}/quantity")
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> updateQuantityProduct(
+            @PathVariable Long id,
+            @RequestParam int quantity) {
+        ProductDetailResponse response = productService.updateQuantityProduct(id, quantity);
+        return ResponseEntity.ok(ApiResponse.ok("Cập nhật số lượng sản phẩm thành công", response));
+    }
 }

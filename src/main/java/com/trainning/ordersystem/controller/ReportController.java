@@ -1,15 +1,21 @@
 package com.trainning.ordersystem.controller;
 
+import com.trainning.ordersystem.dto.common.ApiResponse;
 import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
+import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
 import com.trainning.ordersystem.service.OrderService;
 import com.trainning.ordersystem.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -64,5 +70,16 @@ public class ReportController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(pdfBytes);
+    }
+
+    @GetMapping("/revenue")
+    public ResponseEntity<ApiResponse<List<OrderRevenueStatisticResponse>>> getRevenueStatistics(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "MONTH") String groupBy) {
+
+        log.info("Lấy báo cáo doanh thu: startDate={}, endDate={}, groupBy={}", startDate, endDate, groupBy);
+        List<OrderRevenueStatisticResponse> response = orderService.getRevenueStatistics(startDate, endDate, groupBy);
+        return ResponseEntity.ok(ApiResponse.ok("Lấy báo cáo doanh thu và tỷ lệ đơn hàng thành công", response));
     }
 }

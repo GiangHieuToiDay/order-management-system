@@ -8,6 +8,11 @@ import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
 import com.trainning.ordersystem.entity.User;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
 
+import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
+
+import java.time.LocalDate;
+import java.util.List;
+
 public interface OrderService {
 
     OrderDetailResponse placeOrder(Long customerId, CreateOrderRequest request);
@@ -25,4 +30,6 @@ public interface OrderService {
     OrderDetailResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request, User actor);
 
     long countOrdersByStatus(OrderStatus status);
+
+    List<OrderRevenueStatisticResponse> getRevenueStatistics(LocalDate startDate, LocalDate endDate, String groupBy);
 }

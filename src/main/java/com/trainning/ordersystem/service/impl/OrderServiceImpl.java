@@ -9,6 +9,8 @@ import com.trainning.ordersystem.entity.*;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
 import com.trainning.ordersystem.mapper.OrderMapper;
 import com.trainning.ordersystem.dto.request.order.OrderItemRequest;
+import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticProjection;
+import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
 import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
@@ -33,6 +35,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -263,6 +268,39 @@ public class OrderServiceImpl implements OrderService {
                 multiLock.unlock();
             }
         }
+    }
+
+    @Override
+    public List<OrderRevenueStatisticResponse> getRevenueStatistics(LocalDate startDate, LocalDate endDate, String groupBy) {
+        log.info("Thống kê doanh thu: startDate={}, endDate={}, groupBy={}", startDate, endDate, groupBy);
+
+        LocalDateTime startDateTime = (startDate != null)
+                ? startDate.atStartOfDay()
+                : LocalDateTime.now().minusMonths(6).withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+
+        LocalDateTime endDateTime = (endDate != null)
+                ? endDate.atTime(LocalTime.MAX)
+                : LocalDateTime.now();
+
+        String normalizedGroupBy = (groupBy != null && groupBy.equalsIgnoreCase("DAY")) ? "DAY" : "MONTH";
+
+        List<OrderRevenueStatisticProjection> projections = orderRepository.getOrderRevenueStatistics(
+                startDateTime, endDateTime, normalizedGroupBy
+        );
+
+        return projections.stream()
+                .map(p -> OrderRevenueStatisticResponse.builder()
+                        .period(p.getPeriod())
+                        .totalOrders(p.getTotalOrders())
+                        .completedOrders(p.getCompletedOrders())
+                        .confirmedOrders(p.getConfirmedOrders())
+                        .cancelledOrders(p.getCancelledOrders())
+                        .pendingOrders(p.getPendingOrders())
+                        .totalRevenue(p.getTotalRevenue())
+                        .successRate(p.getSuccessRate())
+                        .cancellationRate(p.getCancellationRate())
+                        .build())
+                .toList();
     }
 
     private List<Long> extractProductIds(Long customerId, CreateOrderRequest request) {
