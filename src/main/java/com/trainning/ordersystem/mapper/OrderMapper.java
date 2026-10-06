@@ -10,6 +10,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -19,6 +20,7 @@ public interface OrderMapper {
     @Mapping(source = "product.name", target = "productName")
     @Mapping(source = "product.sku", target = "productSku")
     @Mapping(source = "product.imageUrl", target = "productImage")
+    @Mapping(target = "subTotal", ignore = true)
     OrderItemResponse toItemResponse(OrderItem orderItem);
 
     List<OrderItemResponse> toItemResponseList(List<OrderItem> orderItems);
@@ -45,6 +47,13 @@ public interface OrderMapper {
     default void calculateTotalItems(Order order, @MappingTarget OrderSummaryResponse response) {
         if (order.getOrderItems() != null) {
             response.setTotalItems(order.getOrderItems().size());
+        }
+    }
+
+    @AfterMapping
+    default void calculateSubTotal(OrderItem orderItem, @MappingTarget OrderItemResponse response) {
+        if (orderItem.getUnitPrice() != null && orderItem.getQuantity() != null) {
+            response.setSubTotal(orderItem.getUnitPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())));
         }
     }
 }

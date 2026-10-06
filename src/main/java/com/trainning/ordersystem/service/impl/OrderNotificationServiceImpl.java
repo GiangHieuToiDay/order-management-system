@@ -1,8 +1,14 @@
 package com.trainning.ordersystem.service.impl;
 
+import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
+import com.trainning.ordersystem.entity.Order;
+import com.trainning.ordersystem.exception.AppException;
+import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
 import com.trainning.ordersystem.service.EmailService;
 import com.trainning.ordersystem.service.OrderNotificationService;
+import com.trainning.ordersystem.service.OrderService;
+import com.trainning.ordersystem.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,26 +18,32 @@ import org.springframework.stereotype.Service;
 public class OrderNotificationServiceImpl implements OrderNotificationService {
 
     private final EmailService emailService;
+    private final ReportService reportService;
+    private final OrderService orderService;
+
+
+
 
     public void sendOrderCreatedEmail(OrderCreatedEvent event) {
 
-        String content = buildOrderCreatedContent(event);
+        OrderDetailResponse order = orderService.getOrderById(event.getOrderId(), event.getCustomerId(), true);
 
-        emailService.sendEmail(
+        byte[] pdf = null;
+
+        try{
+            pdf = reportService.generateBill(order);
+        }catch (Exception e){
+            throw new AppException(ErrorCode.CANNOT_EXPORT_FILE);
+        }
+
+        emailService.sendEmailWithAttachment(
                 "ganrt.hieu.08@gmail.com",
-                "Thông báo đặt hàng",
-                content
+                "Xác nhận đơn hàng " + order.getOrderCode(),
+                "Cảm ơn bạn đã đặt hàng. Hóa đơn được đính kèm trong email.",
+                pdf,
+                "bill-" + order.getOrderCode() + ".pdf"
         );
-    }
 
-    private String buildOrderCreatedContent(OrderCreatedEvent event) {
 
-        return "🎉 Quý khách đã đặt đơn hàng #"
-                + event.getOrderId()
-                + " thành công!\n\n"
-                + "Cảm ơn Quý khách đã tin tưởng và lựa chọn dịch vụ của chúng tôi.\n"
-                + "Đơn hàng của Quý khách đã được ghi nhận và đang được xử lý.\n\n"
-                + "Trân trọng,\n"
-                + "Order Management System";
     }
 }
