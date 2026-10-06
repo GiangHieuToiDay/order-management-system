@@ -172,6 +172,19 @@ public class ProductServiceImpl implements ProductService {
         return productSpecification.isAvailable(product, quantity);
     }
 
+    @Override
+    public ProductDetailResponse updateQuantityProduct(Long id, int quantity) {
+        log.info("Cập nhật trạng thái sản phẩm: id={}", id );
+        productSpecification.checkProductActive(id);
+
+        Product product = productSpecification.getProductById(id);
+        product.setStockQuantity(product.getStockQuantity() + quantity);
+
+        Product savedProduct = productRepository.save(product);
+
+        return productMapper.toDetailResponse(savedProduct);
+    }
+
     private Pageable buildPageable(ProductFilterRequest request) {
 
         Sort.Direction direction = "ASC".equalsIgnoreCase(request.getSortDirection())

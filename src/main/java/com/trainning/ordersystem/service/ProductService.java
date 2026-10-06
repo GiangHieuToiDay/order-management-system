@@ -24,4 +24,6 @@ public interface ProductService {
     ProductDetailResponse assignCategory(Long productId, Long categoryId);
 
     boolean checkProductAvailability(Long productId, int quantity);
+
+    ProductDetailResponse updateQuantityProduct(Long id, int quantity);
 }

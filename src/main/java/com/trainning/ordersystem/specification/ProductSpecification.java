@@ -23,6 +23,15 @@ public class ProductSpecification {
         }
     }
 
+    public void checkProductActive(Long productId){
+        Product product =  productRepository.findById(productId).orElseThrow(
+                () -> new AppException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm với id = " + productId)
+        );
+        if( !product.getStatus().equals("ACTIVE")){
+            throw new AppException(ErrorCode.PRODUCT_INACTIVE);
+        }
+    }
+
     public void validateSkuNotExistsForUpdate(Long productId, String newSku) {
         productRepository.findBySku(newSku).ifPresent(existingProduct -> {
             if (!existingProduct.getId().equals(productId)) {
