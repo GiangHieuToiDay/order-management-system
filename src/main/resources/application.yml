@@ -2,6 +2,15 @@ server:
   port: 8080
 
 spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: manual # Tắt auto-ack, quản lý ack bằng tay
+        prefetch: 10
   data:
     redis:
       host: localhost
@@ -24,6 +33,18 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.SQLServerDialect
     open-in-view: false
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: g.trung.hieu.08@gmail.com
+    password: imeh vhfm vpss awbg
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 logging:
   level:

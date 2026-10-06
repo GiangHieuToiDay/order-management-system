@@ -11,6 +11,8 @@ import com.trainning.ordersystem.mapper.OrderMapper;
 import com.trainning.ordersystem.dto.request.order.OrderItemRequest;
 import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
+import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
+import com.trainning.ordersystem.messaging.event.order.OrderItemEvent;
 import com.trainning.ordersystem.repository.CartItemRepository;
 import com.trainning.ordersystem.repository.OrderRepository;
 import com.trainning.ordersystem.service.CartService;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -51,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartService cartService;
     private final OrderMapper orderMapper;
     private final RedissonClient redissonClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final String LOCK_KEY_PREFIX = "lock:product:";
 
@@ -84,6 +88,22 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItemsList = savedOrder.getOrderItems();
         orderItemService.deductStock(savedOrder.getOrderCode(), orderItemsList);
+
+        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
+                savedOrder.getId(),
+                savedOrder.getCustomer().getId(),
+                savedOrder.getOrderCode(),
+                savedOrder.getOrderItems().stream()
+                        .map(item -> new OrderItemEvent(
+                                item.getId(),
+                                item.getQuantity()
+                        ))
+                        .toList()
+        );
+
+        //orderEventPublisher.publishOrderCreated(orderCreatedEvent);
+        eventPublisher.publishEvent(orderCreatedEvent);
+
 
         if (request.isFromCart()) {
             cartService.clearCart(customerId);
