@@ -1,13 +1,19 @@
 package com.trainning.ordersystem.config.init;
 
 import com.trainning.ordersystem.entity.Category;
+import com.trainning.ordersystem.entity.Customer;
 import com.trainning.ordersystem.entity.Product;
 import com.trainning.ordersystem.entity.Role;
+import com.trainning.ordersystem.entity.User;
 import com.trainning.ordersystem.entity.enums.CategoryStatus;
+import com.trainning.ordersystem.entity.enums.MembershipLevel;
 import com.trainning.ordersystem.entity.enums.ProductStatus;
+import com.trainning.ordersystem.entity.enums.UserStatus;
 import com.trainning.ordersystem.repository.CategoryRepository;
+import com.trainning.ordersystem.repository.CustomerRepository;
 import com.trainning.ordersystem.repository.ProductRepository;
 import com.trainning.ordersystem.repository.RoleRepository;
+import com.trainning.ordersystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -24,11 +30,14 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
 
     @Override
     public void run(String... args) {
         initRoles();
         initCategoriesAndProducts();
+        initSampleCustomer();
     }
 
     private void initRoles() {
@@ -119,5 +128,33 @@ public class DataInitializer implements CommandLineRunner {
         product.setStatus(status);
         product.setCategory(category);
         return product;
+    }
+
+    private void initSampleCustomer() {
+        if (customerRepository.count() > 0) {
+            return;
+        }
+
+        Role customerRole = roleRepository.findByName("CUSTOMER").orElse(null);
+        if (customerRole == null) {
+            return;
+        }
+
+        User user = new User();
+        user.setRole(customerRole);
+        user.setFullName("Nguyễn Văn A");
+        user.setEmail("customer1@gmail.com");
+        user.setPassword("123456");
+        user.setPhone("0987654321");
+        user.setStatus(UserStatus.ACTIVE);
+        User savedUser = userRepository.save(user);
+
+        Customer customer = new Customer();
+        customer.setUser(savedUser);
+        customer.setAddress("Hà Nội");
+        customer.setMembershipLevel(MembershipLevel.REGULAR);
+        customerRepository.save(customer);
+
+        log.info(">> [DataInitializer] Đã khởi tạo khách hàng mẫu thành công (CustomerId={})", customer.getId());
     }
 }
