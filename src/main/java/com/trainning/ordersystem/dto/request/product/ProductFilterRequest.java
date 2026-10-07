@@ -24,7 +24,7 @@ public class ProductFilterRequest {
     private int page = 0;
 
     @Builder.Default
-    private int size = 10;
+    private int size = 5;
 
     @Builder.Default
     private String sortBy = "id";

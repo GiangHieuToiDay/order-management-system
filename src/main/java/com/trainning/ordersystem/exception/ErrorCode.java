@@ -34,6 +34,7 @@ public enum ErrorCode {
     CATEGORY_HAS_PRODUCTS(2003, "Danh mục đang chứa sản phẩm, không thể xóa", HttpStatus.BAD_REQUEST),
     PRODUCT_NOT_FOUND(2004, "Sản phẩm không tồn tại", HttpStatus.NOT_FOUND),
     SKU_ALREADY_EXISTS(2005, "Mã SKU sản phẩm đã tồn tại", HttpStatus.BAD_REQUEST),
+    PRODUCT_INACTIVE(2006, "Sản phẩm hiện đang ngừng kinh doanh", HttpStatus.BAD_REQUEST),
 
     // ===================================================================
     // 4. KHO HÀNG (3xxx)
@@ -51,7 +52,8 @@ public enum ErrorCode {
     ORDER_NOT_FOUND(5001, "Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
     EMPTY_ORDER_ITEMS(5002, "Đơn hàng phải có ít nhất 1 sản phẩm", HttpStatus.BAD_REQUEST),
     INVALID_ORDER_STATUS(5003, "Không thể chuyển sang trạng thái đơn hàng này", HttpStatus.BAD_REQUEST),
-    CANNOT_CANCEL_ORDER(5004, "Đơn hàng đã hoàn tất hoặc đang giao, không thể hủy", HttpStatus.BAD_REQUEST);
+    CANNOT_CANCEL_ORDER(5004, "Đơn hàng đã hoàn tất hoặc đang giao, không thể hủy", HttpStatus.BAD_REQUEST),
+    CANNOT_EXPORT_FILE(5005, "Không export đc file", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

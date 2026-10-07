@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.dto.response.product;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.trainning.ordersystem.entity.enums.ProductStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +20,11 @@ public class ProductDetailResponse {
     private String name;
     private String sku;
     private BigDecimal price;
+    private String unit;
     private Integer stockQuantity;
+
+    @JsonProperty("isAvailable")
+    private Boolean isAvailable;
     private String description;
     private String imageUrl;
     private Long categoryId;

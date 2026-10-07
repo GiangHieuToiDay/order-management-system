@@ -18,6 +18,7 @@ public class ProductSummaryResponse {
     private String name;
     private String sku;
     private BigDecimal price;
+    private String unit;
     private Integer stockQuantity;
     private String imageUrl;
     private Long categoryId;

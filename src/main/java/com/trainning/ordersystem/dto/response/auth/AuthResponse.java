@@ -12,11 +12,13 @@ import lombok.NoArgsConstructor;
 public class AuthResponse {
 
     private String accessToken;
+    private String refreshToken;
 
     @Builder.Default
     private String tokenType = "Bearer";
 
     private Long userId;
+    private Long customerId;
     private String email;
     private String role;
     private String fullName;

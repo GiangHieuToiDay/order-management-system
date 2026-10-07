@@ -40,6 +40,9 @@ public class ProductUpdateRequest {
 
     private String description;
 
+    @Size(max = 50, message = "Đơn vị tính tối đa 50 ký tự")
+    private String unit;
+
     @Size(max = 500, message = "Đường dẫn ảnh tối đa 500 ký tự")
     private String imageUrl;
 

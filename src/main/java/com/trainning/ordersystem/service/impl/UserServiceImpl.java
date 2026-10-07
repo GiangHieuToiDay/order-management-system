@@ -18,6 +18,10 @@ import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.mapper.UserMapper;
 import com.trainning.ordersystem.repository.CustomerRepository;
 import com.trainning.ordersystem.repository.UserRepository;
+import com.trainning.ordersystem.security.jwt.JwtTokenProvider;
+import com.trainning.ordersystem.security.jwt.RefreshTokenService;
+import com.trainning.ordersystem.security.jwt.TokenBlacklistService;
+import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
 import com.trainning.ordersystem.service.UserService;
 import com.trainning.ordersystem.specification.CustomerSpecification;
 import com.trainning.ordersystem.specification.RoleSpecification;
@@ -28,9 +32,21 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.util.Date;
 import java.util.List;
 
 @Slf4j
@@ -46,6 +62,11 @@ public class UserServiceImpl implements UserService {
     private final CustomerSpecification customerSpecification;
     private final UserMapper userMapper;
 
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     @Transactional
@@ -56,6 +77,7 @@ public class UserServiceImpl implements UserService {
         Role role = roleSpecification.findRoleByName("CUSTOMER");
 
         User user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
         user.setStatus(UserStatus.ACTIVE);
         User savedUser = userRepository.save(user);
@@ -73,19 +95,108 @@ public class UserServiceImpl implements UserService {
     public AuthResponse login(LoginRequest request) {
         log.info("Người dùng đăng nhập: email={}", request.getEmail());
 
-        User user = userSpecification.getUserByEmail(request.getEmail());
-        userSpecification.validateLoginCredentials(user, request.getPassword());
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            User user = userDetails.getUser();
+
+            String accessToken = jwtTokenProvider.generateAccessToken(authentication);
+            String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
+
+            String refreshJti = jwtTokenProvider.getJti(refreshToken);
+            refreshTokenService.save(user.getEmail(), refreshJti, jwtTokenProvider.getRefreshTokenExp());
+
+            Long customerId = customerRepository.findByUserId(user.getId())
+                    .map(Customer::getId)
+                    .orElse(null);
+
+            return AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType("Bearer")
+                    .userId(user.getId())
+                    .customerId(customerId)
+                    .email(user.getEmail())
+                    .role(user.getRole().getName())
+                    .fullName(user.getFullName())
+                    .build();
+        } catch (BadCredentialsException e) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Email hoặc mật khẩu không chính xác");
+        } catch (LockedException e) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+        } catch (DisabledException e) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED, "Tài khoản của bạn đã bị vô hiệu hóa");
+        }
+    }
+
+    @Override
+    public AuthResponse refreshToken(String refreshToken) {
+        if (!StringUtils.hasText(refreshToken) || !jwtTokenProvider.validateToken(refreshToken)) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Refresh token không hợp lệ hoặc đã hết hạn");
+        }
+
+        String username = jwtTokenProvider.getUsername(refreshToken);
+        String jti = jwtTokenProvider.getJti(refreshToken);
+
+        if (!refreshTokenService.isValid(username, jti)) {
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Refresh token đã bị thu hồi hoặc không tồn tại");
+        }
+
+        refreshTokenService.revoke(username, jti);
+
+        User user = userRepository.findByEmailWithRole(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
+        }
+
+        Long customerId = customerRepository.findByUserId(user.getId())
+                .map(Customer::getId)
+                .orElse(null);
+
+        CustomUserDetails userDetails = new CustomUserDetails(user, customerId);
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+        String newAccessToken = jwtTokenProvider.generateAccessToken(authentication);
+        String newRefreshToken = jwtTokenProvider.generateRefreshToken(username);
+        String newJti = jwtTokenProvider.getJti(newRefreshToken);
+
+        refreshTokenService.save(username, newJti, jwtTokenProvider.getRefreshTokenExp());
 
         return AuthResponse.builder()
-                .accessToken("MOCK_TOKEN_" + user.getEmail()) // TODO: Sinh JWT token thật ở bước Security
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
                 .userId(user.getId())
+                .customerId(customerId)
                 .email(user.getEmail())
                 .role(user.getRole().getName())
                 .fullName(user.getFullName())
                 .build();
     }
 
+    @Override
+    public void logout(String authHeader) {
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (jwtTokenProvider.validateToken(token)) {
+                String jti = jwtTokenProvider.getJti(token);
+                Date expiration = jwtTokenProvider.getExpiration(token);
+                tokenBlacklistService.blacklist(jti, expiration);
+
+                String username = jwtTokenProvider.getUsername(token);
+                refreshTokenService.revokeAll(username);
+            }
+        }
+        SecurityContextHolder.clearContext();
+    }
 
     @Override
     public UserProfileResponse getMyProfile() {
@@ -119,11 +230,10 @@ public class UserServiceImpl implements UserService {
                 request.getConfirmPassword()
         );
 
-        currentUser.setPassword(request.getNewPassword());
+        currentUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(currentUser);
         log.info("Người dùng '{}' đã đổi mật khẩu thành công", currentUser.getEmail());
     }
-
 
     @Override
     @Transactional
@@ -134,6 +244,7 @@ public class UserServiceImpl implements UserService {
         Role role = roleSpecification.findRoleById(request.getRoleId());
 
         User user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
         user.setStatus(UserStatus.ACTIVE);
         User savedUser = userRepository.save(user);
@@ -186,7 +297,6 @@ public class UserServiceImpl implements UserService {
         log.info("Admin đã cập nhật trạng thái người dùng '{}' thành {}", user.getEmail(), status);
     }
 
-
     @Override
     public UserProfileResponse getCustomerById(Long customerId) {
         Customer customer = customerSpecification.findCustomerById(customerId);
@@ -224,6 +334,24 @@ public class UserServiceImpl implements UserService {
     }
 
     private User getCurrentUserSafe() {
-        return userRepository.findAll().stream().findFirst().orElse(null);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+
+        String email = null;
+        if (auth.getPrincipal() instanceof CustomUserDetails userDetails) {
+            email = userDetails.getUsername();
+        } else if (auth.getPrincipal() instanceof UserDetails userDetails) {
+            email = userDetails.getUsername();
+        } else if (auth.getPrincipal() instanceof String principalStr) {
+            email = principalStr;
+        }
+
+        if (email != null) {
+            return userRepository.findByEmail(email).orElse(null);
+        }
+
+        return null;
     }
 }

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="Bills"
+              pageWidth="595"
+              pageHeight="842"
+              columnWidth="555"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="20"
+              bottomMargin="20">
+
+    <parameter name="orderCode" class="java.lang.String"/>
+    <parameter name="customerName" class="java.lang.String"/>
+    <parameter name="customerPhone" class="java.lang.String"/>
+    <parameter name="totalAmount" class="java.math.BigDecimal"/>
+
+    <field name="productName" class="java.lang.String"/>
+    <field name="productSku" class="java.lang.String"/>
+    <field name="quantity" class="java.lang.Integer"/>
+    <field name="unitPrice" class="java.math.BigDecimal"/>
+    <field name="subTotal" class="java.math.BigDecimal"/>
+
+    <title>
+        <band height="130">
+            <staticText>
+                <reportElement x="0" y="0" width="555" height="25" uuid="00000000-0000-0000-0000-000000000001"/>
+                <textElement textAlignment="Center"><font size="12"/></textElement>
+                <text><![CDATA[ORDER MANAGEMENT SYSTEM]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="0" y="25" width="555" height="30" uuid="00000000-0000-0000-0000-000000000002"/>
+                <textElement textAlignment="Center"><font size="16" isBold="true"/></textElement>
+                <text><![CDATA[HOA DON BAN HANG]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="60" width="555" height="1" uuid="00000000-0000-0000-0000-000000000003"/>
+            </line>
+            <staticText>
+                <reportElement x="0" y="70" width="100" height="20" uuid="00000000-0000-0000-0000-000000000004"/>
+                <textElement><font isBold="true"/></textElement>
+                <text><![CDATA[Ma don hang:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="100" y="70" width="200" height="20" uuid="00000000-0000-0000-0000-000000000005"/>
+                <textFieldExpression><![CDATA[$P{orderCode}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="95" width="100" height="20" uuid="00000000-0000-0000-0000-000000000006"/>
+                <textElement><font isBold="true"/></textElement>
+                <text><![CDATA[Khach hang:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="100" y="95" width="200" height="20" uuid="00000000-0000-0000-0000-000000000007"/>
+                <textFieldExpression><![CDATA[$P{customerName}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="350" y="95" width="50" height="20" uuid="00000000-0000-0000-0000-000000000008"/>
+                <textElement><font isBold="true"/></textElement>
+                <text><![CDATA[SDT:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="400" y="95" width="155" height="20" uuid="00000000-0000-0000-0000-000000000009"/>
+                <textFieldExpression><![CDATA[$P{customerPhone}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="120" width="555" height="1" uuid="00000000-0000-0000-0000-000000000010"/>
+            </line>
+        </band>
+    </title>
+
+    <columnHeader>
+        <band height="25">
+            <staticText>
+                <reportElement mode="Opaque" x="0" y="0" width="40" height="25" backcolor="#DDDDDD" uuid="00000000-0000-0000-0000-000000000011"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[STT]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="40" y="0" width="215" height="25" backcolor="#DDDDDD" uuid="00000000-0000-0000-0000-000000000012"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement verticalAlignment="Middle"><font isBold="true"/><paragraph leftIndent="5"/></textElement>
+                <text><![CDATA[San pham]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="255" y="0" width="60" height="25" backcolor="#DDDDDD" uuid="00000000-0000-0000-0000-000000000013"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[SL]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="315" y="0" width="120" height="25" backcolor="#DDDDDD" uuid="00000000-0000-0000-0000-000000000014"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Don gia]]></text>
+            </staticText>
+            <staticText>
+                <reportElement mode="Opaque" x="435" y="0" width="120" height="25" backcolor="#DDDDDD" uuid="00000000-0000-0000-0000-000000000015"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"><font isBold="true"/></textElement>
+                <text><![CDATA[Thanh tien]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="22">
+            <textField>
+                <reportElement x="0" y="0" width="40" height="22" uuid="00000000-0000-0000-0000-000000000016"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="40" y="0" width="215" height="22" uuid="00000000-0000-0000-0000-000000000017"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement verticalAlignment="Middle"><paragraph leftIndent="5"/></textElement>
+                <textFieldExpression><![CDATA[$F{productName}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="255" y="0" width="60" height="22" uuid="00000000-0000-0000-0000-000000000018"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <textFieldExpression><![CDATA[$F{quantity}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0">
+                <reportElement x="315" y="0" width="120" height="22" uuid="00000000-0000-0000-0000-000000000019"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><paragraph rightIndent="5"/></textElement>
+                <textFieldExpression><![CDATA[$F{unitPrice}]]></textFieldExpression>
+            </textField>
+            <textField pattern="#,##0">
+                <reportElement x="435" y="0" width="120" height="22" uuid="00000000-0000-0000-0000-000000000020"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><paragraph rightIndent="5"/></textElement>
+                <textFieldExpression><![CDATA[$F{subTotal}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <summary>
+        <band height="80">
+            <staticText>
+                <reportElement x="315" y="10" width="120" height="25" uuid="00000000-0000-0000-0000-000000000021"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="12" isBold="true"/><paragraph rightIndent="5"/></textElement>
+                <text><![CDATA[TONG TIEN:]]></text>
+            </staticText>
+            <textField pattern="#,##0">
+                <reportElement x="435" y="10" width="120" height="25" uuid="00000000-0000-0000-0000-000000000022"/>
+                <box><pen lineWidth="0.5"/></box>
+                <textElement textAlignment="Right" verticalAlignment="Middle"><font size="12" isBold="true"/><paragraph rightIndent="5"/></textElement>
+                <textFieldExpression><![CDATA[$P{totalAmount}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="50" width="555" height="20" uuid="00000000-0000-0000-0000-000000000023"/>
+                <textElement textAlignment="Center"><font isItalic="true"/></textElement>
+                <text><![CDATA[Cam on quy khach da mua hang!]]></text>
+            </staticText>
+        </band>
+    </summary>
+
+</jasperReport>

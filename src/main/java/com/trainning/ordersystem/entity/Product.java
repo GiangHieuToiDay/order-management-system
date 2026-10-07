@@ -43,6 +43,9 @@ public class Product {
     @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal price;
 
+    @Column(length = 50)
+    private String unit;
+
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 

@@ -2,13 +2,26 @@ server:
   port: 8080
 
 spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: manual # Tắt auto-ack, quản lý ack bằng tay
+        prefetch: 10
+  data:
+    redis:
+      host: localhost
+      port: 6379
   application:
     name: order-management-system
 
   datasource:
-    url: jdbc:sqlserver://localhost:1433;databaseName=SmartShopDB;encrypt=true;trustServerCertificate=true
+    url: jdbc:sqlserver://localhost:1433;databaseName=ordermanagementsystem;encrypt=true;trustServerCertificate=true
     username: sa
-    password: 123456
+    password: sa
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
@@ -20,6 +33,26 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.SQLServerDialect
     open-in-view: false
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: g.trung.hieu.08@gmail.com
+    password: imeh vhfm vpss awbg
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+jwt:
+  # Mã bí mật dùng để ký và xác thực token
+  secret: ${JWT_SECRET:86154381710927183017264817230481273048127304817}
+  # Thời gian hết hạn của Access Token (24h để test)
+  expiration: 86400000
+  # Thời gian hết hạn của Refresh Token (7 ngày)
+  refresh-expiration: 604800000
 
 logging:
   level:

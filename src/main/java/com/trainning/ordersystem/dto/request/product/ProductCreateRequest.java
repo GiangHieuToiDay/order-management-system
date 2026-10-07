@@ -34,15 +34,18 @@ public class ProductCreateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Giá sản phẩm phải lớn hơn 0")
     private BigDecimal price;
 
-    @NotNull(message = "Số lượng tồn kho không được để trống")
+    @Builder.Default
     @Min(value = 0, message = "Số lượng tồn kho không được âm")
-    private Integer stockQuantity;
+    private Integer stockQuantity = 0;
 
     private String description;
+
+    @Size(max = 50, message = "Đơn vị tính tối đa 50 ký tự")
+    private String unit;
 
     @Size(max = 500, message = "Đường dẫn ảnh tối đa 500 ký tự")
     private String imageUrl;
 
-    @NotNull(message = "Trạng thái sản phẩm không được để trống")
-    private ProductStatus status;
+    @Builder.Default
+    private ProductStatus status = ProductStatus.ACTIVE;
 }

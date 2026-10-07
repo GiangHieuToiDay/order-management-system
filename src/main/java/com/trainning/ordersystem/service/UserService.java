@@ -18,6 +18,9 @@ public interface UserService {
 
     AuthResponse login(LoginRequest request);
 
+    AuthResponse refreshToken(String refreshToken);
+
+    void logout(String authHeader);
 
     UserProfileResponse getMyProfile();
 
