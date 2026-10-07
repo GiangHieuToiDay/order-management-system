@@ -6,14 +6,16 @@ import com.trainning.ordersystem.entity.enums.UserStatus;
 import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.repository.UserRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class UserSpecification {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public void validateRegistration(RegisterCustomerRequest request) {
         validateEmailNotExists(request.getEmail());
@@ -45,7 +47,8 @@ public class UserSpecification {
     }
 
     public void validateLoginCredentials(User user, String rawPassword) {
-        if (!user.getPassword().equals(rawPassword)) {
+        boolean matches = passwordEncoder.matches(rawPassword, user.getPassword()) || user.getPassword().equals(rawPassword);
+        if (!matches) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Email hoặc mật khẩu không chính xác");
         }
         if (user.getStatus() == UserStatus.LOCKED) {
@@ -54,7 +57,8 @@ public class UserSpecification {
     }
 
     public void validatePasswordChange(User user, String oldPassword, String newPassword, String confirmPassword) {
-        if (!user.getPassword().equals(oldPassword)) {
+        boolean matches = passwordEncoder.matches(oldPassword, user.getPassword()) || user.getPassword().equals(oldPassword);
+        if (!matches) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Mật khẩu hiện tại không chính xác");
         }
         if (!newPassword.equals(confirmPassword)) {

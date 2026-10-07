@@ -36,6 +36,20 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("Đăng nhập thành công", response));
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
+            @Valid @RequestBody com.trainning.ordersystem.dto.request.auth.RefreshTokenRequest request) {
+        AuthResponse response = userService.refreshToken(request.getRefreshToken());
+        return ResponseEntity.ok(ApiResponse.ok("Làm mới token thành công", response));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        userService.logout(authHeader);
+        return ResponseEntity.ok(ApiResponse.ok("Đăng xuất thành công", null));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getMyProfile() {
         UserProfileResponse response = userService.getMyProfile();

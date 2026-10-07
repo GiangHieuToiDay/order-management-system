@@ -17,6 +17,7 @@ import com.trainning.ordersystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -32,10 +33,12 @@ public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
         initRoles();
+        initDefaultUsers();
         initCategoriesAndProducts();
         initSampleCustomer();
     }
@@ -130,31 +133,66 @@ public class DataInitializer implements CommandLineRunner {
         return product;
     }
 
-    private void initSampleCustomer() {
-        if (customerRepository.count() > 0) {
-            return;
+    private void initDefaultUsers() {
+        Role adminRole = roleRepository.findByName("ADMIN").orElse(null);
+        if (adminRole != null && !userRepository.existsByEmail("admin@gmail.com")) {
+            User admin = new User();
+            admin.setRole(adminRole);
+            admin.setFullName("Quản trị viên Hệ thống");
+            admin.setEmail("admin@gmail.com");
+            admin.setPassword(passwordEncoder.encode("123456"));
+            admin.setPhone("0900000001");
+            admin.setStatus(UserStatus.ACTIVE);
+            userRepository.save(admin);
+            log.info(">> [DataInitializer] Đã khởi tạo tài khoản ADMIN mẫu: admin@gmail.com / 123456");
         }
 
+        Role staffRole = roleRepository.findByName("STAFF").orElse(null);
+        if (staffRole != null && !userRepository.existsByEmail("staff@gmail.com")) {
+            User staff = new User();
+            staff.setRole(staffRole);
+            staff.setFullName("Nhân viên Bán hàng");
+            staff.setEmail("staff@gmail.com");
+            staff.setPassword(passwordEncoder.encode("123456"));
+            staff.setPhone("0900000002");
+            staff.setStatus(UserStatus.ACTIVE);
+            userRepository.save(staff);
+            log.info(">> [DataInitializer] Đã khởi tạo tài khoản STAFF mẫu: staff@gmail.com / 123456");
+        }
+    }
+
+    private void initSampleCustomer() {
         Role customerRole = roleRepository.findByName("CUSTOMER").orElse(null);
         if (customerRole == null) {
             return;
         }
 
-        User user = new User();
-        user.setRole(customerRole);
-        user.setFullName("Nguyễn Văn A");
-        user.setEmail("customer1@gmail.com");
-        user.setPassword("123456");
-        user.setPhone("0987654321");
-        user.setStatus(UserStatus.ACTIVE);
-        User savedUser = userRepository.save(user);
+        if (!userRepository.existsByEmail("customer1@gmail.com")) {
+            User user = new User();
+            user.setRole(customerRole);
+            user.setFullName("Nguyễn Văn A");
+            user.setEmail("customer1@gmail.com");
+            user.setPassword(passwordEncoder.encode("123456"));
+            user.setPhone("0987654321");
+            user.setStatus(UserStatus.ACTIVE);
+            User savedUser = userRepository.save(user);
 
-        Customer customer = new Customer();
-        customer.setUser(savedUser);
-        customer.setAddress("Hà Nội");
-        customer.setMembershipLevel(MembershipLevel.REGULAR);
-        customerRepository.save(customer);
+            Customer customer = new Customer();
+            customer.setUser(savedUser);
+            customer.setAddress("Hà Nội");
+            customer.setMembershipLevel(MembershipLevel.REGULAR);
+            customerRepository.save(customer);
 
-        log.info(">> [DataInitializer] Đã khởi tạo khách hàng mẫu thành công (CustomerId={})", customer.getId());
+            log.info(">> [DataInitializer] Đã khởi tạo khách hàng mẫu thành công (customer1@gmail.com / 123456)");
+        } else {
+            // Cập nhật lại mật khẩu sang BCrypt nếu tài khoản cũ đang lưu plain text
+            userRepository.findByEmail("customer1@gmail.com").ifPresent(user -> {
+                if (user.getPassword() != null && !user.getPassword().startsWith("$2a$") && !user.getPassword().startsWith("$2b$")) {
+                    user.setPassword(passwordEncoder.encode(user.getPassword()));
+                    userRepository.save(user);
+                    log.info(">> [DataInitializer] Đã mã hóa lại mật khẩu BCrypt cho user customer1@gmail.com");
+                }
+            });
+        }
     }
 }

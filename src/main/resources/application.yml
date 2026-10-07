@@ -46,6 +46,14 @@ spring:
           starttls:
             enable: true
 
+jwt:
+  # Mã bí mật dùng để ký và xác thực token
+  secret: ${JWT_SECRET:86154381710927183017264817230481273048127304817}
+  # Thời gian hết hạn của Access Token (24h để test)
+  expiration: 86400000
+  # Thời gian hết hạn của Refresh Token (7 ngày)
+  refresh-expiration: 604800000
+
 logging:
   level:
     com.trainning.ordersystem: DEBUG

@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,6 +21,7 @@ public class UserController {
 
     private final UserService userService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<UserProfileResponse>> createUser(
             @Valid @RequestBody CreateUserRequest request) {
@@ -28,6 +30,7 @@ public class UserController {
                 .body(ApiResponse.created("Tạo người dùng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<UserProfileResponse>>> getUsers(
             @RequestParam(defaultValue = "0") int page,
@@ -39,12 +42,14 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách người dùng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getUserById(@PathVariable Long id) {
         UserProfileResponse response = userService.getUserById(id);
         return ResponseEntity.ok(ApiResponse.ok("Lấy chi tiết người dùng thành công", response));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<Void>> updateUserStatus(
             @PathVariable Long id,
@@ -53,12 +58,14 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái người dùng thành công", null));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getCustomerById(@PathVariable Long customerId) {
         UserProfileResponse response = userService.getCustomerById(customerId);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin khách hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PatchMapping("/customers/{customerId}/membership")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateCustomerMembership(
             @PathVariable Long customerId,

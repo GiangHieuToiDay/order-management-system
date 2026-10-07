@@ -5,17 +5,20 @@ import com.trainning.ordersystem.dto.common.PageResponse;
 import com.trainning.ordersystem.dto.request.order.CreateOrderRequest;
 import com.trainning.ordersystem.dto.request.order.OrderStatusUpdateRequest;
 import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
+import com.trainning.ordersystem.dto.response.order.OrderItemResponse;
 import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
+import com.trainning.ordersystem.entity.User;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
+import com.trainning.ordersystem.security.SecurityUtils;
+import com.trainning.ordersystem.service.OrderItemService;
 import com.trainning.ordersystem.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import com.trainning.ordersystem.dto.response.order.OrderItemResponse;
-import com.trainning.ordersystem.service.OrderItemService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -31,9 +34,10 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<OrderDetailResponse>> placeOrder(
-            @RequestParam(defaultValue = "1") Long customerId,
+            @RequestParam(required = false) Long customerId,
             @Valid @RequestBody CreateOrderRequest request) {
-        OrderDetailResponse response = orderService.placeOrder(customerId, request);
+        Long effectiveCustomerId = resolveCustomerId(customerId);
+        OrderDetailResponse response = orderService.placeOrder(effectiveCustomerId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Đặt hàng thành công", response));
     }
@@ -41,30 +45,36 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderById(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "1") Long customerId,
-            @RequestParam(defaultValue = "false") boolean isAdminOrStaff) {
-        OrderDetailResponse response = orderService.getOrderById(id, customerId, isAdminOrStaff);
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) Boolean isAdminOrStaff) {
+        boolean adminOrStaff = SecurityUtils.isAdminOrStaff();
+        Long effectiveCustomerId = adminOrStaff && customerId != null ? customerId : SecurityUtils.getCurrentCustomerId();
+        OrderDetailResponse response = orderService.getOrderById(id, effectiveCustomerId, adminOrStaff);
         return ResponseEntity.ok(ApiResponse.ok("Lấy chi tiết đơn hàng thành công", response));
     }
 
     @GetMapping("/code/{orderCode}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderByCode(
             @PathVariable String orderCode,
-            @RequestParam(defaultValue = "1") Long customerId,
-            @RequestParam(defaultValue = "false") boolean isAdminOrStaff) {
-        OrderDetailResponse response = orderService.getOrderByCode(orderCode, customerId, isAdminOrStaff);
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) Boolean isAdminOrStaff) {
+        boolean adminOrStaff = SecurityUtils.isAdminOrStaff();
+        Long effectiveCustomerId = adminOrStaff && customerId != null ? customerId : SecurityUtils.getCurrentCustomerId();
+        OrderDetailResponse response = orderService.getOrderByCode(orderCode, effectiveCustomerId, adminOrStaff);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin đơn hàng thành công", response));
     }
 
     @GetMapping("/my-orders")
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getMyOrders(
-            @RequestParam(defaultValue = "1") Long customerId,
+            @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PageResponse<OrderSummaryResponse> response = orderService.getMyOrders(customerId, page, size);
+        Long effectiveCustomerId = resolveCustomerId(customerId);
+        PageResponse<OrderSummaryResponse> response = orderService.getMyOrders(effectiveCustomerId, page, size);
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách đơn hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getAllOrders(
             @RequestParam(required = false) String keyword,
@@ -78,20 +88,24 @@ public class OrderController {
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> cancelMyOrder(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "1") Long customerId,
+            @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "Khách hàng yêu cầu hủy") String reason) {
-        OrderDetailResponse response = orderService.cancelMyOrder(id, customerId, reason);
+        Long effectiveCustomerId = resolveCustomerId(customerId);
+        OrderDetailResponse response = orderService.cancelMyOrder(id, effectiveCustomerId, reason);
         return ResponseEntity.ok(ApiResponse.ok("Hủy đơn hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> updateOrderStatus(
             @PathVariable Long id,
             @Valid @RequestBody OrderStatusUpdateRequest request) {
-        OrderDetailResponse response = orderService.updateOrderStatus(id, request, null);
+        User actor = SecurityUtils.getCurrentUser();
+        OrderDetailResponse response = orderService.updateOrderStatus(id, request, actor);
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái đơn hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @GetMapping("/statistics/revenue")
     public ResponseEntity<ApiResponse<List<OrderRevenueStatisticResponse>>> getRevenueStatistics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -107,9 +121,17 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách sản phẩm trong đơn hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @GetMapping("/count")
     public ResponseEntity<ApiResponse<Long>> countOrdersByStatus(@RequestParam OrderStatus status) {
         long count = orderService.countOrdersByStatus(status);
         return ResponseEntity.ok(ApiResponse.ok("Đếm số lượng đơn hàng theo trạng thái thành công", count));
+    }
+
+    private Long resolveCustomerId(Long requestedCustomerId) {
+        if (SecurityUtils.isAdminOrStaff() && requestedCustomerId != null) {
+            return requestedCustomerId;
+        }
+        return SecurityUtils.getCurrentCustomerId();
     }
 }

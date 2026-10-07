@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class ProductController {
 
     private final ProductService productService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PostMapping
     public ResponseEntity<ApiResponse<ProductDetailResponse>> createProduct(
             @Valid @RequestBody ProductCreateRequest request) {
@@ -30,7 +32,6 @@ public class ProductController {
                 .body(ApiResponse.created("Tạo sản phẩm thành công", response));
     }
 
-
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getProducts(
             @ModelAttribute ProductFilterRequest filterRequest) {
@@ -38,14 +39,13 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách sản phẩm thành công", response));
     }
 
-
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProductById(@PathVariable Long id) {
         ProductDetailResponse response = productService.getProductById(id);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin sản phẩm thành công", response));
     }
 
-
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> updateProduct(
             @PathVariable Long id,
@@ -54,7 +54,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật thông tin sản phẩm thành công", response));
     }
 
-
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> updateProductStatus(
             @PathVariable Long id,
@@ -63,7 +63,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái sản phẩm thành công", response));
     }
 
-
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PatchMapping("/{id}/category/{categoryId}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> assignCategory(
             @PathVariable Long id,
@@ -71,7 +71,6 @@ public class ProductController {
         ProductDetailResponse response = productService.assignCategory(id, categoryId);
         return ResponseEntity.ok(ApiResponse.ok("Gán danh mục cho sản phẩm thành công", response));
     }
-
 
     @GetMapping("/{id}/availability")
     public ResponseEntity<ApiResponse<Boolean>> checkProductAvailability(
@@ -81,6 +80,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.ok("Kiểm tra tính khả dụng thành công", available));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PatchMapping("/{id}/quantity")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> updateQuantityProduct(
             @PathVariable Long id,

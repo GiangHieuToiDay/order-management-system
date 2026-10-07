@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.dto.common;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,8 +20,22 @@ public class PageResponse<T> {
     private int pageSize;
     private long totalElements;
     private int totalPages;
+
+    @JsonProperty("first")
     private boolean isFirst;
+
+    @JsonProperty("last")
     private boolean isLast;
+
+    @JsonProperty("isFirst")
+    public boolean getIsFirst() {
+        return isFirst;
+    }
+
+    @JsonProperty("isLast")
+    public boolean getIsLast() {
+        return isLast;
+    }
 
     public static <T> PageResponse<T> from(Page<T> page) {
         return PageResponse.<T>builder()

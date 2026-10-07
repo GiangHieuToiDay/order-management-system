@@ -90,6 +90,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Xử lý lỗi không có quyền truy cập (403 Forbidden)
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+        ApiResponse<Void> response = ApiResponse.error(
+                ErrorCode.ACCESS_DENIED.getCode(),
+                ErrorCode.ACCESS_DENIED.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    /**
+     * Xử lý lỗi xác thực không thành công (401 Unauthorized)
+     */
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+        ApiResponse<Void> response = ApiResponse.error(
+                ErrorCode.INVALID_CREDENTIALS.getCode(),
+                ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    /**
      * Xử lý tất cả các ngoại lệ không lường trước được (500)
      */
     @ExceptionHandler(Exception.class)

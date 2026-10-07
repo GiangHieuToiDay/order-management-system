@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PostMapping
     public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(
             @Valid @RequestBody CategoryRequest request) {
@@ -51,6 +53,7 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.ok("Lấy chi tiết danh mục thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
             @PathVariable Long id,
@@ -59,6 +62,7 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật danh mục thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<CategoryResponse>> updateCategoryStatus(
             @PathVariable Long id,
@@ -67,6 +71,7 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái danh mục thành công", response));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);
