@@ -21,8 +21,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
     long countByStatus(OrderStatus status);
 
-    @Query("SELECT o FROM Order o WHERE " +
-            "(:keyword IS NULL OR LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+    @Query(value = "SELECT o FROM Order o LEFT JOIN FETCH o.customer c LEFT JOIN FETCH c.user u WHERE " +
+            "(:keyword IS NULL OR :keyword = '' OR LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:status IS NULL OR o.status = :status)",
+           countQuery = "SELECT COUNT(o) FROM Order o WHERE " +
+            "(:keyword IS NULL OR :keyword = '' OR LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "AND (:status IS NULL OR o.status = :status)")
     Page<Order> searchOrders(@Param("keyword") String keyword,

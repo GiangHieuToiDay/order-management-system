@@ -21,8 +21,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    @Query("SELECT u FROM User u WHERE " +
-            "(:keyword IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.role WHERE " +
+            "(:keyword IS NULL OR :keyword = '' OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            " OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:roleId IS NULL OR u.role.id = :roleId) " +
+            "AND (:status IS NULL OR u.status = :status)",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE " +
+            "(:keyword IS NULL OR :keyword = '' OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             " OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "AND (:roleId IS NULL OR u.role.id = :roleId) " +
             "AND (:status IS NULL OR u.status = :status)")

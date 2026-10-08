@@ -28,6 +28,7 @@ public class User {
     @Column(nullable = false, length = 255)
     private String password;
 
+    @org.hibernate.annotations.Nationalized
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 

@@ -88,6 +88,7 @@ public class SecurityConfig {
 
                         // 4. Role-based endpoint restrictions
                         .requestMatchers("/api/v1/roles/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/inventory-transactions/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/reports/revenue/**").hasAnyRole("ADMIN", "STAFF")
 
                         // 5. All other requests require authentication

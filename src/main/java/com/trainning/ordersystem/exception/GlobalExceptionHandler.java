@@ -119,9 +119,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
         log.error("Internal Server Error: ", ex);
+        String detail = ex.getClass().getSimpleName() + ": " + ex.getMessage();
+        if (ex.getCause() != null) {
+            detail += " | Cause: " + ex.getCause().getClass().getSimpleName() + ": " + ex.getCause().getMessage();
+        }
         ApiResponse<Void> response = ApiResponse.error(
                 ErrorCode.UNCATEGORIZED_EXCEPTION.getCode(),
-                ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage()
+                detail
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }

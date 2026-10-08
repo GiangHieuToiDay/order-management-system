@@ -24,9 +24,16 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.trainning.ordersystem.entity.InventoryTransaction;
+import com.trainning.ordersystem.entity.enums.TransactionType;
+import com.trainning.ordersystem.repository.InventoryTransactionRepository;
+import com.trainning.ordersystem.security.SecurityUtils;
+
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -41,6 +48,7 @@ public class ProductServiceImpl implements ProductService {
     private final RedisService redisService;
     private final ProductMapper productMapper;
     private final ObjectMapper objectMapper;
+    private final InventoryTransactionRepository inventoryTransactionRepository;
 
 
     @Override
@@ -61,6 +69,9 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Product savedProduct = productRepository.save(product);
+
+        redisService.setStock(savedProduct.getId(), savedProduct.getStockQuantity());
+        redisService.clearCachePattern("product:list:*");
         return productMapper.toDetailResponse(savedProduct);
     }
 
@@ -71,10 +82,11 @@ public class ProductServiceImpl implements ProductService {
         String cacheKey = redisService.buildCacheKeyFilterProduct(request);
 
         Object cachedData = redisService.get(cacheKey);
+        PageResponse<ProductSummaryResponse> response = null;
 
         if (cachedData != null) {
             try {
-                return objectMapper.readValue(
+                response = objectMapper.readValue(
                         cachedData.toString(),
                         new TypeReference<PageResponse<ProductSummaryResponse>>() {}
                 );
@@ -83,28 +95,51 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        Page<Product> productPage = productRepository.searchProducts(
-                request.getKeyword(),
-                request.getCategoryId(),
-                request.getStatus(),
-                request.getMinPrice(),
-                request.getMaxPrice(),
-                buildPageable(request)
-        );
-
-        PageResponse<ProductSummaryResponse> response =
-                buildPageResponse(productPage);
-
-        try {
-            String jsonString = objectMapper.writeValueAsString(response);
-            redisService.set(
-                    cacheKey,
-                    jsonString,
-                    10,
-                    TimeUnit.MINUTES
+        if (response == null) {
+            Page<Product> productPage = productRepository.searchProducts(
+                    request.getKeyword(),
+                    request.getCategoryId(),
+                    request.getStatus(),
+                    request.getMinPrice(),
+                    request.getMaxPrice(),
+                    buildPageable(request)
             );
-        } catch (Exception e) {
-            log.error("Lỗi serialize lưu vào Redis cache với key={}: {}", cacheKey, e.getMessage());
+
+            response = buildPageResponse(productPage);
+
+            try {
+                String jsonString = objectMapper.writeValueAsString(response);
+                redisService.set(
+                        cacheKey,
+                        jsonString,
+                        30,
+                        TimeUnit.MINUTES
+                );
+            } catch (Exception e) {
+                log.error("Lỗi serialize lưu vào Redis cache với key={}: {}", cacheKey, e.getMessage());
+            }
+        }
+
+
+        if (response != null && response.getContent() != null && !response.getContent().isEmpty()) {
+
+            List<Long> productIds = response.getContent().stream()
+                    .map(ProductSummaryResponse::getId)
+                    .toList();
+
+            Map<Long, Integer> stockMap = redisService.getMultiStocks(productIds);
+
+            for (ProductSummaryResponse item : response.getContent()) {
+
+                Integer realtimeStock = stockMap.get(item.getId());
+
+                if (realtimeStock != null) {
+                    item.setStockQuantity(realtimeStock);
+                } else if (item.getStockQuantity() != null) {
+                    redisService.setStock(item.getId(), item.getStockQuantity());
+                }
+
+            }
         }
 
         return response;
@@ -114,7 +149,16 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductDetailResponse getProductById(Long id) {
         Product product = productSpecification.getProductById(id);
-        return productMapper.toDetailResponse(product);
+        ProductDetailResponse detail = productMapper.toDetailResponse(product);
+
+        Integer realtimeStock = redisService.getStock(id);
+        if (realtimeStock != null) {
+            detail.setStockQuantity(realtimeStock);
+        } else if (product.getStockQuantity() != null) {
+            redisService.setStock(id, product.getStockQuantity());
+        }
+
+        return detail;
     }
 
 
@@ -134,6 +178,11 @@ public class ProductServiceImpl implements ProductService {
         productMapper.updateEntityFromRequest(request, product);
         Product updatedProduct = productRepository.save(product);
 
+        if (request.getStockQuantity() != null) {
+            redisService.setStock(id, updatedProduct.getStockQuantity());
+        }
+
+        redisService.clearCachePattern("product:list:*");
         return productMapper.toDetailResponse(updatedProduct);
     }
 
@@ -147,7 +196,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = productSpecification.getProductById(id);
         product.setStatus(status);
         Product savedProduct = productRepository.save(product);
-
+        redisService.clearCachePattern("product:list:*");
         return productMapper.toDetailResponse(savedProduct);
     }
 
@@ -161,20 +210,26 @@ public class ProductServiceImpl implements ProductService {
 
         product.setCategory(category);
         Product savedProduct = productRepository.save(product);
-
+        redisService.clearCachePattern("product:list:*");
         return productMapper.toDetailResponse(savedProduct);
     }
 
 
     @Override
     public boolean checkProductAvailability(Long productId, int quantity) {
+
+        Integer realtimeStock = redisService.getStock(productId);
+        if (realtimeStock != null) {
+            return realtimeStock >= quantity;
+        }
         Product product = productSpecification.getProductById(productId);
         return productSpecification.isAvailable(product, quantity);
     }
 
     @Override
+    @Transactional
     public ProductDetailResponse updateQuantityProduct(Long id, int quantity) {
-        log.info("Cập nhật trạng thái sản phẩm: id={}", id );
+        log.info("Cập nhật số lượng sản phẩm: id={}, quantity={}", id, quantity);
         productSpecification.checkProductActive(id);
 
         Product product = productSpecification.getProductById(id);
@@ -182,7 +237,27 @@ public class ProductServiceImpl implements ProductService {
 
         Product savedProduct = productRepository.save(product);
 
-        return productMapper.toDetailResponse(savedProduct);
+        redisService.addStock(id, quantity);
+
+
+
+        if (quantity != 0) {
+            try {
+                InventoryTransaction transaction = new InventoryTransaction();
+                transaction.setProduct(savedProduct);
+                transaction.setType(quantity > 0 ? TransactionType.IN : TransactionType.OUT);
+                transaction.setQuantity(Math.abs(quantity));
+                transaction.setReason("Admin điều chỉnh tồn kho thủ công (" + (quantity > 0 ? "+" : "") + quantity + ")");
+                transaction.setCreatedBy(SecurityUtils.getCurrentUser());
+                inventoryTransactionRepository.save(transaction);
+            } catch (Exception e) {
+                log.warn("Không thể lưu inventory transaction: {}", e.getMessage());
+            }
+        }
+
+        ProductDetailResponse res = productMapper.toDetailResponse(savedProduct);
+        res.setStockQuantity(savedProduct.getStockQuantity());
+        return res;
     }
 
     private Pageable buildPageable(ProductFilterRequest request) {
@@ -215,5 +290,4 @@ public class ProductServiceImpl implements ProductService {
                 .isLast(productPage.isLast())
                 .build();
     }
-
 }

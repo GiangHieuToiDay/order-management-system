@@ -16,11 +16,11 @@ public interface OrderItemService {
 
     List<OrderItem> createOrderItemsFromCart(Order order, Long customerId);
 
+    List<OrderItem> createOrderItemsFromCart(Order order, Long customerId, List<Long> cartItemIds);
+
     List<OrderItemResponse> getItemsByOrderId(Long orderId);
 
     OrderItemResponse getItemById(Long itemId);
-
-    void deductStockForOrderItems(List<OrderItem> items, String orderCode, User actor);
 
     void deductStock(String orderCode, List<OrderItem> items);
 

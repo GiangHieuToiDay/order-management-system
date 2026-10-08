@@ -31,6 +31,7 @@ public class Product {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    @org.hibernate.annotations.Nationalized
     @Column(nullable = false, length = 200)
     private String name;
 
@@ -43,6 +44,7 @@ public class Product {
     @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal price;
 
+    @org.hibernate.annotations.Nationalized
     @Column(length = 50)
     private String unit;
 

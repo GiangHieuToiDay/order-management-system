@@ -27,7 +27,7 @@ public class ProductSpecification {
         Product product =  productRepository.findById(productId).orElseThrow(
                 () -> new AppException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm với id = " + productId)
         );
-        if( !product.getStatus().equals("ACTIVE")){
+        if (product.getStatus() != ProductStatus.ACTIVE) {
             throw new AppException(ErrorCode.PRODUCT_INACTIVE);
         }
     }

@@ -80,7 +80,7 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItems;
         if (request.isFromCart()) {
-            orderItems = orderItemService.createOrderItemsFromCart(order, customerId);
+            orderItems = orderItemService.createOrderItemsFromCart(order, customerId, request.getCartItemIds());
         } else {
             orderItems = orderItemService.createOrderItems(order, request.getItems());
         }
@@ -94,24 +94,13 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> orderItemsList = savedOrder.getOrderItems();
         orderItemService.deductStock(savedOrder.getOrderCode(), orderItemsList);
 
-        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
-                savedOrder.getId(),
-                savedOrder.getCustomer().getId(),
-                savedOrder.getOrderCode(),
-                savedOrder.getOrderItems().stream()
-                        .map(item -> new OrderItemEvent(
-                                item.getId(),
-                                item.getQuantity()
-                        ))
-                        .toList()
-        );
-
-        //orderEventPublisher.publishOrderCreated(orderCreatedEvent);
-        eventPublisher.publishEvent(orderCreatedEvent);
-
 
         if (request.isFromCart()) {
-            cartService.clearCart(customerId);
+            if (request.getCartItemIds() != null && !request.getCartItemIds().isEmpty()) {
+                cartItemRepository.deleteAllById(request.getCartItemIds());
+            } else {
+                cartService.clearCart(customerId);
+            }
         }
 
         log.info("Đặt hàng thành công với mã đơn: {}", savedOrder.getOrderCode());
@@ -216,6 +205,20 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(newStatus);
         Order savedOrder = orderRepository.save(order);
 
+        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
+                savedOrder.getId(),
+                savedOrder.getCustomer().getId(),
+                savedOrder.getOrderCode(),
+                savedOrder.getOrderItems().stream()
+                        .map(item -> new OrderItemEvent(
+                                item.getId(),
+                                item.getQuantity()
+                        ))
+                        .toList()
+        );
+
+        eventPublisher.publishEvent(orderCreatedEvent);
+
         if (newStatus == OrderStatus.CANCELLED && oldStatus != OrderStatus.CANCELLED) {
             orderItemService.restoreStockForOrderItems(order.getOrderItems(), order.getOrderCode(), actor);
         }
@@ -306,7 +309,7 @@ public class OrderServiceImpl implements OrderService {
     private List<Long> extractProductIds(Long customerId, CreateOrderRequest request) {
         List<Long> productIds = new ArrayList<>();
         if (request.isFromCart()) {
-            List<CartItem> cartItems = cartItemRepository.findByCustomerId(customerId);
+            List<CartItem> cartItems = cartItemRepository.findByCustomerIdAndOptionalIds(customerId, request.getCartItemIds());
             if (cartItems != null) {
                 for (CartItem item : cartItems) {
                     if (item.getProduct() != null && item.getProduct().getId() != null) {

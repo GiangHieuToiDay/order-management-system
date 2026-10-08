@@ -11,5 +11,7 @@ import java.util.List;
 @Repository
 public interface InventoryTransactionRepository extends JpaRepository<InventoryTransaction, Long> {
     Page<InventoryTransaction> findByProductId(Long productId, Pageable pageable);
+    Page<InventoryTransaction> findByProductIdOrderByCreatedAtDesc(Long productId, Pageable pageable);
+    Page<InventoryTransaction> findAllByOrderByCreatedAtDesc(Pageable pageable);
     List<InventoryTransaction> findByProductIdOrderByCreatedAtDesc(Long productId);
 }

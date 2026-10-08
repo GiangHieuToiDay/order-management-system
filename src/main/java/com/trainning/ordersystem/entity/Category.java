@@ -23,9 +23,11 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @org.hibernate.annotations.Nationalized
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
+    @org.hibernate.annotations.Nationalized
     @Column(length = 500)
     private String description;
 
