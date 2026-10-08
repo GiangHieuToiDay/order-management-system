@@ -10,6 +10,7 @@ import com.trainning.ordersystem.repository.InventoryTransactionRepository;
 import com.trainning.ordersystem.repository.OrderItemRepository;
 import com.trainning.ordersystem.repository.ProductRepository;
 import com.trainning.ordersystem.service.OrderItemService;
+import com.trainning.ordersystem.service.RedisService;
 import com.trainning.ordersystem.specification.OrderItemSpecification;
 import com.trainning.ordersystem.specification.ProductSpecification;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     private final CartItemRepository cartItemRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final OrderMapper orderMapper;
+    private final RedisService redisService;
 
     @Override
     public List<OrderItem> createOrderItems(Order order, List<OrderItemRequest> itemRequests) {
@@ -63,9 +65,14 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     @Override
     public List<OrderItem> createOrderItemsFromCart(Order order, Long customerId) {
-        log.info("Khởi tạo danh sách OrderItem từ giỏ hàng cho customerId={}", customerId);
+        return createOrderItemsFromCart(order, customerId, null);
+    }
 
-        List<CartItem> cartItems = cartItemRepository.findByCustomerId(customerId);
+    @Override
+    public List<OrderItem> createOrderItemsFromCart(Order order, Long customerId, List<Long> cartItemIds) {
+        log.info("Khởi tạo danh sách OrderItem từ giỏ hàng cho customerId={}, cartItemIds={}", customerId, cartItemIds);
+
+        List<CartItem> cartItems = cartItemRepository.findByCustomerIdAndOptionalIds(customerId, cartItemIds);
         orderItemSpecification.validateItemsNotEmpty(cartItems);
 
         List<OrderItem> orderItems = new ArrayList<>();
@@ -101,30 +108,6 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     @Override
     @Transactional
-    public void deductStockForOrderItems(List<OrderItem> items, String orderCode, User actor) {
-        log.info("Trừ tồn kho và ghi nhật ký xuất kho cho đơn hàng orderCode={}", orderCode);
-        orderItemSpecification.validateItemsNotEmpty(items);
-
-        User transactionUser = resolveTransactionActor(items, actor);
-
-        for (OrderItem item : items) {
-            Product product = item.getProduct();
-            int newStock = product.getStockQuantity() - item.getQuantity();
-            product.setStockQuantity(newStock);
-            productRepository.save(product);
-
-            InventoryTransaction transaction = new InventoryTransaction();
-            transaction.setProduct(product);
-            transaction.setType(TransactionType.OUT);
-            transaction.setQuantity(item.getQuantity());
-            transaction.setReason("Xuất kho cho đơn hàng " + orderCode);
-            transaction.setCreatedBy(transactionUser);
-            inventoryTransactionRepository.save(transaction);
-        }
-    }
-
-    @Override
-    @Transactional
     public void deductStock(String orderCode, List<OrderItem> items) {
         log.info("Trừ tồn kho từ sự kiện OrderCreatedEvent cho đơn hàng orderCode={}", orderCode);
         if (items == null || items.isEmpty()) {
@@ -149,6 +132,11 @@ public class OrderItemServiceImpl implements OrderItemService {
             product.setStockQuantity(newStock);
             productRepository.save(product);
 
+            Long rem = redisService.deductStock(product.getId(), item.getQuantity());
+            if (rem == null) {
+                redisService.setStock(product.getId(), newStock);
+            }
+
             InventoryTransaction transaction = new InventoryTransaction();
             transaction.setProduct(product);
             transaction.setType(TransactionType.OUT);
@@ -157,6 +145,7 @@ public class OrderItemServiceImpl implements OrderItemService {
             transaction.setCreatedBy(actor);
             inventoryTransactionRepository.save(transaction);
         }
+
     }
 
     @Override
@@ -173,11 +162,17 @@ public class OrderItemServiceImpl implements OrderItemService {
             product.setStockQuantity(newStock);
             productRepository.save(product);
 
+            Long rem = redisService.addStock(product.getId(), item.getQuantity());
+            if (rem == null) {
+                redisService.setStock(product.getId(), newStock);
+            }
+
             InventoryTransaction transaction = new InventoryTransaction();
             transaction.setProduct(product);
             transaction.setType(TransactionType.IN);
             transaction.setReason("Hoàn kho do hủy đơn hàng " + orderCode);
             transaction.setCreatedBy(transactionUser);
+            transaction.setQuantity(item.getQuantity());
             inventoryTransactionRepository.save(transaction);
         }
     }

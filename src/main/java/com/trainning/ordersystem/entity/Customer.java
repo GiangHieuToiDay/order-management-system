@@ -27,6 +27,7 @@ public class Customer {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
+    @org.hibernate.annotations.Nationalized
     @Column(length = 500)
     private String address;
 

@@ -11,12 +11,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CreateOrderRequest {
 
     @NotBlank(message = "Tên người nhận không được để trống")
@@ -43,6 +45,12 @@ public class CreateOrderRequest {
      */
     @Builder.Default
     private boolean fromCart = false;
+
+    /**
+     * Danh sách ID các CartItem được tick chọn mua (nếu fromCart = true).
+     * Nếu null hoặc rỗng, mặc định mua toàn bộ giỏ hàng.
+     */
+    private List<Long> cartItemIds;
 
     @Valid
     private List<OrderItemRequest> items;

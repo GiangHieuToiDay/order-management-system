@@ -44,6 +44,7 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 18, scale = 2)
     private BigDecimal totalAmount;
 
+    @org.hibernate.annotations.Nationalized
     @Column(name = "shipping_address", nullable = false, length = 500)
     private String shippingAddress;
 

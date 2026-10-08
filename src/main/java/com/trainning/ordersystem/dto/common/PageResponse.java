@@ -21,11 +21,19 @@ public class PageResponse<T> {
     private long totalElements;
     private int totalPages;
 
-    @JsonProperty("first")
     private boolean isFirst;
 
-    @JsonProperty("last")
     private boolean isLast;
+
+    @JsonProperty("first")
+    public boolean getFirst() {
+        return isFirst;
+    }
+
+    @JsonProperty("last")
+    public boolean getLast() {
+        return isLast;
+    }
 
     @JsonProperty("isFirst")
     public boolean getIsFirst() {

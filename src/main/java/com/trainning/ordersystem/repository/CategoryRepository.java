@@ -22,7 +22,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findByStatus(CategoryStatus status);
 
     @Query("SELECT c FROM Category c WHERE " +
-            "(:keyword IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "(:keyword IS NULL OR :keyword = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "AND (:status IS NULL OR c.status = :status)")
     Page<Category> searchCategories(@Param("keyword") String keyword,
                                    @Param("status") CategoryStatus status,
