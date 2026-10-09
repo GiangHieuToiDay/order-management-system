@@ -1,0 +1,17 @@
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+
+  datasource:
+    url: ${DB_URL:jdbc:sqlserver://host.docker.internal:1433;databaseName=ordermanagementsystem;encrypt=true;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:sa}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver

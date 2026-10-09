@@ -70,8 +70,8 @@ public class ProductServiceImpl implements ProductService {
 
         Product savedProduct = productRepository.save(product);
 
-        redisService.setStock(savedProduct.getId(), savedProduct.getStockQuantity());
-        redisService.clearCachePattern("product:list:*");
+        redisService.setStock(savedProduct.getId(), savedProduct.getStockQuantity());  // set stock lên redis
+        redisService.clearCachePattern("product:list:*"); // xóa cache cũ của list sản phẩm cũ đẩy lên
         return productMapper.toDetailResponse(savedProduct);
     }
 

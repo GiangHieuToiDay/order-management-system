@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Nationalized;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -28,7 +29,7 @@ public class User {
     @Column(nullable = false, length = 255)
     private String password;
 
-    @org.hibernate.annotations.Nationalized
+    @Nationalized
     @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 

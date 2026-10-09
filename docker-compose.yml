@@ -1,17 +1,50 @@
 version: '3.8'
+
 services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     restart: always
     ports:
-      - "5672:5672"
+      - "${RABBITMQ_PORT:-5672}:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-management-backend
+    restart: always
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    env_file:
+      - .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - RABBITMQ_HOST=rabbitmq
+      - REDIS_HOST=redis
+      - DB_HOST=host.docker.internal
+      - DB_URL=jdbc:sqlserver://host.docker.internal:1433;databaseName=ordermanagementsystem;encrypt=true;trustServerCertificate=true
+    depends_on:
+      - rabbitmq
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   rabbitmq_data:
+  redis_data:
