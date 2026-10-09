@@ -1,33 +1,33 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
     listener:
       simple:
         acknowledge-mode: manual # Tắt auto-ack, quản lý ack bằng tay
         prefetch: 10
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   application:
     name: order-management-system
 
   datasource:
-    url: jdbc:sqlserver://localhost:1433;databaseName=ordermanagementsystem;encrypt=true;trustServerCertificate=true
-    username: sa
-    password: sa
+    url: ${DB_URL:jdbc:sqlserver://${DB_HOST:localhost}:${DB_PORT:1433};databaseName=${DB_NAME:ordermanagementsystem};encrypt=true;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD:sa}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
         format_sql: true
@@ -36,10 +36,10 @@ spring:
     open-in-view: false
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: g.trung.hieu.08@gmail.com
-    password: imeh vhfm vpss awbg
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:g.trung.hieu.08@gmail.com}
+    password: ${MAIL_PASSWORD:imeh vhfm vpss awbg}
     properties:
       mail:
         smtp:
@@ -49,14 +49,14 @@ spring:
 
 jwt:
   # Mã bí mật dùng để ký và xác thực token
-  secret: ${JWT_SECRET:86154381710927183017264817230481273048127304817}
+  secret: ${JWT_SECRET:8615438171092718301726481723048127304817}
   # Thời gian hết hạn của Access Token (24h để test)
-  expiration: 86400000
+  expiration: ${JWT_EXPIRATION:86400000}
   # Thời gian hết hạn của Refresh Token (7 ngày)
-  refresh-expiration: 604800000
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 logging:
   level:
-    com.trainning.ordersystem: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+    com.trainning.ordersystem: ${LOGGING_LEVEL_APP:DEBUG}
+    org.hibernate.SQL: ${LOGGING_LEVEL_SQL:DEBUG}
+    org.hibernate.orm.jdbc.bind: ${LOGGING_LEVEL_BIND:TRACE}
