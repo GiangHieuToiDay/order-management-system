@@ -4,10 +4,14 @@ import com.trainning.ordersystem.entity.User;
 import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 
+
+@Component
 public final class SecurityUtils {
 
     private SecurityUtils() {
