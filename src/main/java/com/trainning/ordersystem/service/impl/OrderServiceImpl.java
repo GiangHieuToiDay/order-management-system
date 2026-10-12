@@ -7,12 +7,11 @@ import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
 import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
 import com.trainning.ordersystem.entity.*;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
+import com.trainning.ordersystem.entity.enums.PaymentMethod;
 import com.trainning.ordersystem.mapper.OrderMapper;
 import com.trainning.ordersystem.dto.request.order.OrderItemRequest;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticProjection;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
-import com.trainning.ordersystem.exception.AppException;
-import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
 import com.trainning.ordersystem.messaging.event.order.OrderItemEvent;
 import com.trainning.ordersystem.repository.CartItemRepository;
@@ -20,12 +19,11 @@ import com.trainning.ordersystem.repository.OrderRepository;
 import com.trainning.ordersystem.service.CartService;
 import com.trainning.ordersystem.service.OrderItemService;
 import com.trainning.ordersystem.service.OrderService;
+import com.trainning.ordersystem.service.RedisService;
 import com.trainning.ordersystem.specification.CustomerSpecification;
 import com.trainning.ordersystem.specification.OrderSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,11 +37,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+
 
 @Slf4j
 @Service
@@ -58,10 +53,8 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemRepository cartItemRepository;
     private final CartService cartService;
     private final OrderMapper orderMapper;
-    private final RedissonClient redissonClient;
+    private final RedisService redisService;
     private final ApplicationEventPublisher eventPublisher;
-
-    private static final String LOCK_KEY_PREFIX = "lock:product:";
 
     @Override
     @Transactional
@@ -70,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
 
         List<Long> productIds = extractProductIds(customerId, request);
 
-        return executeWithProductLocks(productIds, () -> doPlaceOrder(customerId, request));
+        return redisService.executeWithProductLocks(productIds, () -> doPlaceOrder(customerId,request));
     }
 
     private OrderDetailResponse doPlaceOrder(Long customerId, CreateOrderRequest request) {
@@ -93,6 +86,11 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItemsList = savedOrder.getOrderItems();
         orderItemService.deductStock(savedOrder.getOrderCode(), orderItemsList);
+
+        if (savedOrder.getPaymentMethod() == PaymentMethod.BANK_TRANSFER) {
+            publishEventOrder(savedOrder);
+        }
+
 
 
         if (request.isFromCart()) {
@@ -135,21 +133,9 @@ public class OrderServiceImpl implements OrderService {
     public PageResponse<OrderSummaryResponse> getMyOrders(Long customerId, int page, int size) {
         log.info("Lấy lịch sử đơn hàng của customerId={}, page={}, size={}", customerId, page, size);
         customerSpecification.findCustomerById(customerId);
-
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<Order> orderPage = orderRepository.findByCustomerId(customerId, pageable);
-
-        List<OrderSummaryResponse> content = orderMapper.toSummaryResponseList(orderPage.getContent());
-
-        return PageResponse.<OrderSummaryResponse>builder()
-                .content(content)
-                .pageNumber(orderPage.getNumber())
-                .pageSize(orderPage.getSize())
-                .totalElements(orderPage.getTotalElements())
-                .totalPages(orderPage.getTotalPages())
-                .isFirst(orderPage.isFirst())
-                .isLast(orderPage.isLast())
-                .build();
+        return toPageResponse(orderPage);
     }
 
     @Override
@@ -159,17 +145,7 @@ public class OrderServiceImpl implements OrderService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<Order> orderPage = orderRepository.searchOrders(keyword, status, pageable);
 
-        List<OrderSummaryResponse> content = orderMapper.toSummaryResponseList(orderPage.getContent());
-
-        return PageResponse.<OrderSummaryResponse>builder()
-                .content(content)
-                .pageNumber(orderPage.getNumber())
-                .pageSize(orderPage.getSize())
-                .totalElements(orderPage.getTotalElements())
-                .totalPages(orderPage.getTotalPages())
-                .isFirst(orderPage.isFirst())
-                .isLast(orderPage.isLast())
-                .build();
+        return toPageResponse(orderPage);
     }
 
     @Override
@@ -200,24 +176,16 @@ public class OrderServiceImpl implements OrderService {
         OrderStatus oldStatus = order.getStatus();
         OrderStatus newStatus = request.getStatus();
 
+
         orderSpecification.validateStatusTransition(oldStatus, newStatus);
 
         order.setStatus(newStatus);
         Order savedOrder = orderRepository.save(order);
 
-        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
-                savedOrder.getId(),
-                savedOrder.getCustomer().getId(),
-                savedOrder.getOrderCode(),
-                savedOrder.getOrderItems().stream()
-                        .map(item -> new OrderItemEvent(
-                                item.getId(),
-                                item.getQuantity()
-                        ))
-                        .toList()
-        );
+        if (savedOrder.getPaymentMethod() == PaymentMethod.COD && newStatus == OrderStatus.COMPLETED) {
+            publishEventOrder(savedOrder);
+        }
 
-        eventPublisher.publishEvent(orderCreatedEvent);
 
         if (newStatus == OrderStatus.CANCELLED && oldStatus != OrderStatus.CANCELLED) {
             orderItemService.restoreStockForOrderItems(order.getOrderItems(), order.getOrderCode(), actor);
@@ -235,43 +203,6 @@ public class OrderServiceImpl implements OrderService {
         return "ORD" + System.currentTimeMillis();
     }
 
-
-    public <T> T executeWithProductLocks(List<Long> productIds, Supplier<T> action) {
-        if (productIds == null || productIds.isEmpty()) {
-            return action.get();
-        }
-
-        List<Long> sortedIds = new ArrayList<>(new HashSet<>(productIds));
-        Collections.sort(sortedIds);
-
-        RLock[] locks = new RLock[sortedIds.size()];
-        for (int i = 0; i < sortedIds.size(); i++) {
-            locks[i] = redissonClient.getLock(LOCK_KEY_PREFIX + sortedIds.get(i));
-        }
-
-        RLock multiLock = redissonClient.getMultiLock(locks);
-
-        try {
-            boolean isLocked = multiLock.tryLock(3, 5, TimeUnit.SECONDS);
-
-            if (!isLocked) {
-                throw new AppException(
-                        ErrorCode.UNCATEGORIZED_EXCEPTION,
-                        "Hệ thống đang bận do có nhiều người cùng mua các sản phẩm này, vui lòng thử lại sau giây lát!"
-                );
-            }
-
-            return action.get();
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Quá trình xử lý đặt hàng bị gián đoạn");
-        } finally {
-            if (multiLock.isHeldByCurrentThread()) {
-                multiLock.unlock();
-            }
-        }
-    }
 
     @Override
     public List<OrderRevenueStatisticResponse> getRevenueStatistics(LocalDate startDate, LocalDate endDate, String groupBy) {
@@ -326,5 +257,32 @@ public class OrderServiceImpl implements OrderService {
         }
         return productIds;
     }
+
+    private PageResponse<OrderSummaryResponse> toPageResponse(
+            Page<Order> orderPage
+    ) {
+        return PageResponse.<OrderSummaryResponse>builder()
+                .content(orderMapper.toSummaryResponseList(orderPage.getContent()))
+                .pageNumber(orderPage.getNumber())
+                .pageSize(orderPage.getSize())
+                .totalElements(orderPage.getTotalElements())
+                .totalPages(orderPage.getTotalPages())
+                .isFirst(orderPage.isFirst())
+                .isLast(orderPage.isLast())
+                .build();
+    }
+
+    private void publishEventOrder(Order order){
+        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
+                order.getId(),
+                order.getCustomer().getId(),
+                order.getOrderCode(),
+                order.getOrderItems().stream()
+                        .map(item -> new OrderItemEvent(item.getId(), item.getQuantity()))
+                        .toList()
+        );
+        eventPublisher.publishEvent(orderCreatedEvent);
+    }
+
 }
 
