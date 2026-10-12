@@ -5,6 +5,7 @@ import com.trainning.ordersystem.dto.request.product.ProductFilterRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 public interface RedisService {
 
@@ -33,4 +34,7 @@ public interface RedisService {
 
     // // [DECOUPLED STOCK CACHING] Hoàn/cộng tồn kho nguyên tử (Atomic INCRBY) khi hủy đơn hàng hoặc nhập thêm
     Long addStock(Long productId, int quantity);
+
+    public <T> T executeWithProductLocks(List<Long> productIds, Supplier<T> action);
+
 }

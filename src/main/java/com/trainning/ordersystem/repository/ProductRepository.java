@@ -5,6 +5,7 @@ import com.trainning.ordersystem.entity.enums.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -18,8 +19,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findBySku(String sku);
 
     boolean existsBySku(String sku);
-
-    Page<Product> findByCategoryIdAndStatus(Long categoryId, ProductStatus status, Pageable pageable);
 
     boolean existsByCategoryId(Long categoryId);
 
@@ -43,4 +42,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                  @Param("minPrice") BigDecimal minPrice,
                                  @Param("maxPrice") BigDecimal maxPrice,
                                  Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity - :quantity " +
+           "WHERE p.id = :productId AND p.stockQuantity >= :quantity")
+    int deductStock(@Param("productId") Long productId, @Param("quantity") int quantity);
+
+    @Modifying
+    @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity + :quantity " +
+           "WHERE p.id = :productId")
+    int addStock(@Param("productId") Long productId, @Param("quantity") int quantity);
 }

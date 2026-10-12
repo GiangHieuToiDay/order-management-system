@@ -15,6 +15,8 @@ import com.trainning.ordersystem.service.ProductService;
 import com.trainning.ordersystem.service.RedisService;
 import com.trainning.ordersystem.specification.CategorySpecification;
 import com.trainning.ordersystem.specification.ProductSpecification;
+import com.trainning.ordersystem.exception.AppException;
+import com.trainning.ordersystem.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -135,9 +137,12 @@ public class ProductServiceImpl implements ProductService {
 
                 if (realtimeStock != null) {
                     item.setStockQuantity(realtimeStock);
-                } else if (item.getStockQuantity() != null) {
-                    redisService.setStock(item.getId(), item.getStockQuantity());
+                } else {
+                    if (item.getStockQuantity() != null) {
+                        redisService.setStock(item.getId(), item.getStockQuantity());
+                    }
                 }
+
 
             }
         }
@@ -154,8 +159,10 @@ public class ProductServiceImpl implements ProductService {
         Integer realtimeStock = redisService.getStock(id);
         if (realtimeStock != null) {
             detail.setStockQuantity(realtimeStock);
-        } else if (product.getStockQuantity() != null) {
-            redisService.setStock(id, product.getStockQuantity());
+        } else {
+            if (product.getStockQuantity() != null) {
+                redisService.setStock(id, product.getStockQuantity());
+            }
         }
 
         return detail;
@@ -233,13 +240,19 @@ public class ProductServiceImpl implements ProductService {
         productSpecification.checkProductActive(id);
 
         Product product = productSpecification.getProductById(id);
-        product.setStockQuantity(product.getStockQuantity() + quantity);
+
+        int newStock = product.getStockQuantity() + quantity;
+        if (newStock < 0) {
+            throw new AppException(
+                    ErrorCode.INSUFFICIENT_STOCK,
+                    "Số lượng tồn kho không đủ để giảm. Hiện tại chỉ còn: " + product.getStockQuantity()
+            );
+        }
+        product.setStockQuantity(newStock);
 
         Product savedProduct = productRepository.save(product);
 
-        redisService.addStock(id, quantity);
-
-
+        redisService.setStock(id, savedProduct.getStockQuantity());
 
         if (quantity != 0) {
             try {

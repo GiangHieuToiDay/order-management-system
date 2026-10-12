@@ -45,7 +45,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                 FROM orders o
                 WHERE o.created_at >= :startDate AND o.created_at <= :endDate
             )
-            SELECT 
+            SELECT
                 b.period AS period,
                 COUNT(b.id) AS totalOrders,
                 ISNULL(SUM(CASE WHEN b.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completedOrders,
@@ -63,5 +63,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate,
             @Param("groupBy") String groupBy);
+    // dùng isnull do có thể k có đơn nào có status như trên có thể dẫn đến null dùng isnull để thay thế cái null đấy sẽ bằng 0
+    // cast để cast sang dạng float
+    // sum là tính tổng trng thái complete với canceled rồi * 100 / count tổng, dùng null if để tránh chia cho 0.
+
 }
 

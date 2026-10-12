@@ -16,6 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
+    // lấy email của dùng cùng với role của người dùng luôn, left join lấy tất cả tài khoản dù có role hay k role
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.role WHERE u.email = :email")
     Optional<User> findByEmailWithRole(@Param("email") String email);
 

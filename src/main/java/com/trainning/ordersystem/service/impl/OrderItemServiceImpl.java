@@ -4,6 +4,8 @@ import com.trainning.ordersystem.dto.request.order.OrderItemRequest;
 import com.trainning.ordersystem.dto.response.order.OrderItemResponse;
 import com.trainning.ordersystem.entity.*;
 import com.trainning.ordersystem.entity.enums.TransactionType;
+import com.trainning.ordersystem.exception.AppException;
+import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.mapper.OrderMapper;
 import com.trainning.ordersystem.repository.CartItemRepository;
 import com.trainning.ordersystem.repository.InventoryTransactionRepository;
@@ -128,9 +130,16 @@ public class OrderItemServiceImpl implements OrderItemService {
 
         for (OrderItem item : items) {
             Product product = productSpecification.getProductById(item.getProduct().getId());
+
+            int updatedRows = productRepository.deductStock(product.getId(), item.getQuantity());
+            if (updatedRows == 0) {
+                throw new AppException(
+                        ErrorCode.INSUFFICIENT_STOCK,
+                        "Sản phẩm '" + product.getName() + "' không đủ số lượng tồn kho để xuất hàng"
+                );
+            }
+
             int newStock = product.getStockQuantity() - item.getQuantity();
-            product.setStockQuantity(newStock);
-            productRepository.save(product);
 
             Long rem = redisService.deductStock(product.getId(), item.getQuantity());
             if (rem == null) {
@@ -158,9 +167,9 @@ public class OrderItemServiceImpl implements OrderItemService {
 
         for (OrderItem item : items) {
             Product product = item.getProduct();
+            productRepository.addStock(product.getId(), item.getQuantity());
+
             int newStock = product.getStockQuantity() + item.getQuantity();
-            product.setStockQuantity(newStock);
-            productRepository.save(product);
 
             Long rem = redisService.addStock(product.getId(), item.getQuantity());
             if (rem == null) {

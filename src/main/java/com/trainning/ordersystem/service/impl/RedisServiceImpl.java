@@ -1,17 +1,20 @@
 package com.trainning.ordersystem.service.impl;
 
 import com.trainning.ordersystem.dto.request.product.ProductFilterRequest;
+import com.trainning.ordersystem.exception.AppException;
+import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 
 @Slf4j
@@ -21,6 +24,9 @@ public class RedisServiceImpl implements RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final StringRedisTemplate stringRedisTemplate;
+    private final RedissonClient redissonClient;
+
+    private static final String LOCK_KEY_PREFIX = "lock:product:";
 
     @Override
     public String buildCacheKeyFilterProduct(ProductFilterRequest request) {
@@ -131,6 +137,44 @@ public class RedisServiceImpl implements RedisService {
         } catch (Exception e) {
             log.error("Lỗi khi cộng tồn kho trên Redis cho productId={}: {}", productId, e.getMessage());
             return null;
+        }
+    }
+
+    @Override
+    public <T> T executeWithProductLocks(List<Long> productIds, Supplier<T> action) {
+        if (productIds == null || productIds.isEmpty()) {
+            return action.get();
+        }
+
+        List<Long> sortedIds = new ArrayList<>(new HashSet<>(productIds));
+        Collections.sort(sortedIds);
+
+        RLock[] locks = new RLock[sortedIds.size()];
+        for (int i = 0; i < sortedIds.size(); i++) {
+            locks[i] = redissonClient.getLock(LOCK_KEY_PREFIX + sortedIds.get(i));
+        }
+
+        RLock multiLock = redissonClient.getMultiLock(locks);
+
+        try {
+            boolean isLocked = multiLock.tryLock(3, 5, TimeUnit.SECONDS);
+
+            if (!isLocked) {
+                throw new AppException(
+                        ErrorCode.UNCATEGORIZED_EXCEPTION,
+                        "Hệ thống đang bận do có nhiều người cùng mua các sản phẩm này, vui lòng thử lại sau giây lát!"
+                );
+            }
+
+            return action.get();
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Quá trình xử lý đặt hàng bị gián đoạn");
+        } finally {
+            if (multiLock.isHeldByCurrentThread()) {
+                multiLock.unlock();
+            }
         }
     }
 }
