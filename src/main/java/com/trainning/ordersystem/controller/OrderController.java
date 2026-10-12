@@ -10,7 +10,7 @@ import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
 import com.trainning.ordersystem.entity.User;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
-import com.trainning.ordersystem.security.SecurityUtils;
+import com.trainning.ordersystem.security.CustomerContext;
 import com.trainning.ordersystem.service.OrderItemService;
 import com.trainning.ordersystem.service.OrderService;
 import jakarta.validation.Valid;
@@ -31,12 +31,13 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderItemService orderItemService;
+    private final CustomerContext customerContext;
 
     @PostMapping
     public ResponseEntity<ApiResponse<OrderDetailResponse>> placeOrder(
             @RequestParam(required = false) Long customerId,
             @Valid @RequestBody CreateOrderRequest request) {
-        Long effectiveCustomerId = resolveCustomerId(customerId);
+        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
         OrderDetailResponse response = orderService.placeOrder(effectiveCustomerId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Đặt hàng thành công", response));
@@ -45,10 +46,9 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderById(
             @PathVariable Long id,
-            @RequestParam(required = false) Long customerId,
-            @RequestParam(required = false) Boolean isAdminOrStaff) {
-        boolean adminOrStaff = SecurityUtils.isAdminOrStaff();
-        Long effectiveCustomerId = adminOrStaff && customerId != null ? customerId : SecurityUtils.getCurrentCustomerId();
+            @RequestParam(required = false) Long customerId) {
+        boolean adminOrStaff = customerContext.isAdminOrStaff();
+        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
         OrderDetailResponse response = orderService.getOrderById(id, effectiveCustomerId, adminOrStaff);
         return ResponseEntity.ok(ApiResponse.ok("Lấy chi tiết đơn hàng thành công", response));
     }
@@ -56,10 +56,9 @@ public class OrderController {
     @GetMapping("/code/{orderCode}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderByCode(
             @PathVariable String orderCode,
-            @RequestParam(required = false) Long customerId,
-            @RequestParam(required = false) Boolean isAdminOrStaff) {
-        boolean adminOrStaff = SecurityUtils.isAdminOrStaff();
-        Long effectiveCustomerId = adminOrStaff && customerId != null ? customerId : SecurityUtils.getCurrentCustomerId();
+            @RequestParam(required = false) Long customerId) {
+        boolean adminOrStaff = customerContext.isAdminOrStaff();
+        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
         OrderDetailResponse response = orderService.getOrderByCode(orderCode, effectiveCustomerId, adminOrStaff);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin đơn hàng thành công", response));
     }
@@ -69,7 +68,7 @@ public class OrderController {
             @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Long effectiveCustomerId = resolveCustomerId(customerId);
+        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
         PageResponse<OrderSummaryResponse> response = orderService.getMyOrders(effectiveCustomerId, page, size);
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách đơn hàng thành công", response));
     }
@@ -90,7 +89,7 @@ public class OrderController {
             @PathVariable Long id,
             @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "Khách hàng yêu cầu hủy") String reason) {
-        Long effectiveCustomerId = resolveCustomerId(customerId);
+        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
         OrderDetailResponse response = orderService.cancelMyOrder(id, effectiveCustomerId, reason);
         return ResponseEntity.ok(ApiResponse.ok("Hủy đơn hàng thành công", response));
     }
@@ -100,7 +99,7 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderDetailResponse>> updateOrderStatus(
             @PathVariable Long id,
             @Valid @RequestBody OrderStatusUpdateRequest request) {
-        User actor = SecurityUtils.getCurrentUser();
+        User actor = customerContext.getCurrentUser();
         OrderDetailResponse response = orderService.updateOrderStatus(id, request, actor);
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái đơn hàng thành công", response));
     }
@@ -126,12 +125,5 @@ public class OrderController {
     public ResponseEntity<ApiResponse<Long>> countOrdersByStatus(@RequestParam OrderStatus status) {
         long count = orderService.countOrdersByStatus(status);
         return ResponseEntity.ok(ApiResponse.ok("Đếm số lượng đơn hàng theo trạng thái thành công", count));
-    }
-
-    private Long resolveCustomerId(Long requestedCustomerId) {
-        if (SecurityUtils.isAdminOrStaff() && requestedCustomerId != null) {
-            return requestedCustomerId;
-        }
-        return SecurityUtils.getCurrentCustomerId();
     }
 }
