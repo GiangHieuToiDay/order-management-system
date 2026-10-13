@@ -29,4 +29,29 @@ public class UserProfileResponse {
     private String address;
     private MembershipLevel membershipLevel;
     private BigDecimal totalSpent;
+
+
+    public UserProfileResponse(
+            Long id,
+            String fullName,
+            String email,
+            String phone,
+            String role,
+            UserStatus status,
+            LocalDateTime createdAt,
+            Long customerId,
+            String address,
+            MembershipLevel membershipLevel
+    ) {
+        this.id = id;
+        this.fullName = fullName;
+        this.email = email;
+        this.phone = phone;
+        this.role = role;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.customerId = customerId;
+        this.address = address;
+        this.membershipLevel = membershipLevel;
+    }
 }

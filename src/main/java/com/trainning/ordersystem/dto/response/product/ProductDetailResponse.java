@@ -32,4 +32,57 @@ public class ProductDetailResponse {
     private ProductStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Constructor dùng cho JPQL SELECT new (tự động tính isAvailable)
+    public ProductDetailResponse(
+            Long id,
+            String name,
+            String sku,
+            BigDecimal price,
+            String unit,
+            Integer stockQuantity,
+            String description,
+            String imageUrl,
+            Long categoryId,
+            String categoryName,
+            ProductStatus status,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+        this.id = id;
+        this.name = name;
+        this.sku = sku;
+        this.price = price;
+        this.unit = unit;
+        this.stockQuantity = stockQuantity;
+        this.isAvailable = (status == ProductStatus.ACTIVE && stockQuantity != null && stockQuantity > 0);
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public static ProductDetailResponse from(com.trainning.ordersystem.entity.Product product) {
+        if (product == null) return null;
+        var category = product.getCategory();
+        return ProductDetailResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .sku(product.getSku())
+                .price(product.getPrice())
+                .unit(product.getUnit())
+                .stockQuantity(product.getStockQuantity())
+                .isAvailable(product.getStatus() == ProductStatus.ACTIVE && product.getStockQuantity() != null && product.getStockQuantity() > 0)
+                .description(product.getDescription())
+                .imageUrl(product.getImageUrl())
+                .categoryId(category != null ? category.getId() : null)
+                .categoryName(category != null ? category.getName() : null)
+                .status(product.getStatus())
+                .createdAt(product.getCreatedAt())
+                .updatedAt(product.getUpdatedAt())
+                .build();
+    }
 }

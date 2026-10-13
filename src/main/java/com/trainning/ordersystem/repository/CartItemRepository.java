@@ -1,7 +1,10 @@
 package com.trainning.ordersystem.repository;
 
+import com.trainning.ordersystem.dto.response.cart.CartItemResponse;
 import com.trainning.ordersystem.entity.CartItem;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -11,6 +14,22 @@ import java.util.Optional;
 @Repository
 public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     List<CartItem> findByCustomerId(Long customerId);
+
+    @Query("""
+        SELECT new com.trainning.ordersystem.dto.response.cart.CartItemResponse(
+            ci.id,
+            p.id,
+            p.name,
+            p.sku,
+            p.imageUrl,
+            p.price,
+            ci.quantity
+        )
+        FROM CartItem ci
+        LEFT JOIN ci.product p
+        WHERE ci.customer.id = :customerId
+    """)
+    List<CartItemResponse> findItemResponsesByCustomerId(@Param("customerId") Long customerId);
     List<CartItem> findByIdInAndCustomerId(Collection<Long> ids, Long customerId);
     Optional<CartItem> findByCustomerIdAndProductId(Long customerId, Long productId);
     void deleteByCustomerId(Long customerId);

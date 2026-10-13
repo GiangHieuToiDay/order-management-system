@@ -26,4 +26,28 @@ public class InventoryTransactionResponse {
     private Long createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
+
+    public InventoryTransactionResponse(
+            Long id,
+            Long productId,
+            String productName,
+            String productSku,
+            TransactionType type,
+            Integer quantity,
+            String note,
+            Long createdBy,
+            String createdByName,
+            LocalDateTime createdAt
+    ) {
+        this.id = id;
+        this.productId = productId;
+        this.productName = productName;
+        this.productSku = productSku;
+        this.type = type;
+        this.quantity = quantity;
+        this.note = note;
+        this.createdBy = createdBy;
+        this.createdByName = createdByName;
+        this.createdAt = createdAt;
+    }
 }

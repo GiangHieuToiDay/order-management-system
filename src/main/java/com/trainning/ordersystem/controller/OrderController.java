@@ -33,43 +33,39 @@ public class OrderController {
     private final OrderItemService orderItemService;
     private final CustomerContext customerContext;
 
+
+    @PreAuthorize("hasAnyRole('CUSTOMER')")
     @PostMapping
     public ResponseEntity<ApiResponse<OrderDetailResponse>> placeOrder(
-            @RequestParam(required = false) Long customerId,
             @Valid @RequestBody CreateOrderRequest request) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        OrderDetailResponse response = orderService.placeOrder(effectiveCustomerId, request);
+        OrderDetailResponse response = orderService.placeOrder(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Đặt hàng thành công", response));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderById(
-            @PathVariable Long id,
-            @RequestParam(required = false) Long customerId) {
-        boolean adminOrStaff = customerContext.isAdminOrStaff();
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        OrderDetailResponse response = orderService.getOrderById(id, effectiveCustomerId, adminOrStaff);
+            @PathVariable Long id
+            ) {
+//        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
+        OrderDetailResponse response = orderService.getOrderById(id);
         return ResponseEntity.ok(ApiResponse.ok("Lấy chi tiết đơn hàng thành công", response));
     }
 
     @GetMapping("/code/{orderCode}")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderByCode(
-            @PathVariable String orderCode,
-            @RequestParam(required = false) Long customerId) {
-        boolean adminOrStaff = customerContext.isAdminOrStaff();
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        OrderDetailResponse response = orderService.getOrderByCode(orderCode, effectiveCustomerId, adminOrStaff);
+            @PathVariable String orderCode
+            ) {
+//        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
+        OrderDetailResponse response = orderService.getOrderByCode(orderCode);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin đơn hàng thành công", response));
     }
 
     @GetMapping("/my-orders")
     public ResponseEntity<ApiResponse<PageResponse<OrderSummaryResponse>>> getMyOrders(
-            @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        PageResponse<OrderSummaryResponse> response = orderService.getMyOrders(effectiveCustomerId, page, size);
+        PageResponse<OrderSummaryResponse> response = orderService.getMyOrders( page, size);
         return ResponseEntity.ok(ApiResponse.ok("Lấy danh sách đơn hàng thành công", response));
     }
 
@@ -87,10 +83,8 @@ public class OrderController {
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<OrderDetailResponse>> cancelMyOrder(
             @PathVariable Long id,
-            @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "Khách hàng yêu cầu hủy") String reason) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        OrderDetailResponse response = orderService.cancelMyOrder(id, effectiveCustomerId, reason);
+        OrderDetailResponse response = orderService.cancelMyOrder(id, reason);
         return ResponseEntity.ok(ApiResponse.ok("Hủy đơn hàng thành công", response));
     }
 
@@ -99,8 +93,7 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderDetailResponse>> updateOrderStatus(
             @PathVariable Long id,
             @Valid @RequestBody OrderStatusUpdateRequest request) {
-        User actor = customerContext.getCurrentUser();
-        OrderDetailResponse response = orderService.updateOrderStatus(id, request, actor);
+        OrderDetailResponse response = orderService.updateOrderStatus(id, request);
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật trạng thái đơn hàng thành công", response));
     }
 

@@ -155,9 +155,10 @@ public class RedisServiceImpl implements RedisService {
         }
 
         RLock multiLock = redissonClient.getMultiLock(locks);
+        boolean isLocked = false;
 
         try {
-            boolean isLocked = multiLock.tryLock(3, 5, TimeUnit.SECONDS);
+            isLocked = multiLock.tryLock(3,  TimeUnit.SECONDS);
 
             if (!isLocked) {
                 throw new AppException(
@@ -172,9 +173,15 @@ public class RedisServiceImpl implements RedisService {
             Thread.currentThread().interrupt();
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION, "Quá trình xử lý đặt hàng bị gián đoạn");
         } finally {
-            if (multiLock.isHeldByCurrentThread()) {
-                multiLock.unlock();
+            if (isLocked) {
+                try {
+                    multiLock.unlock();
+                } catch (IllegalMonitorStateException e) {
+                    log.warn("Lock đã mất hiệu lực trước khi unlock", e);
+                }
             }
         }
     }
+
+
 }

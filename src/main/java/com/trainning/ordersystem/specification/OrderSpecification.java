@@ -7,6 +7,8 @@ import com.trainning.ordersystem.entity.enums.OrderStatus;
 import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.repository.OrderRepository;
+import com.trainning.ordersystem.security.SecurityUtils;
+import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -42,14 +44,24 @@ public class OrderSpecification {
                 ));
     }
 
-    public void validateOrderOwnership(Order order, Long customerId) {
-        if (order.getCustomer() == null || !order.getCustomer().getId().equals(customerId)) {
+    public void validateOrderOwnership(Order order) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+
+        if (userDetails.hasRole("ADMIN") || userDetails.hasRole("STAFF")) {
+            return;
+        }
+
+        Long currentCustomerId = userDetails.getCustomerId();
+        if (order.getCustomer() == null
+                || currentCustomerId == null
+                || !order.getCustomer().getId().equals(currentCustomerId)) {
             throw new AppException(
                     ErrorCode.ACCESS_DENIED,
                     "Bạn không có quyền xem hoặc thao tác trên đơn hàng này"
             );
         }
     }
+
 
     public void validateCanCancel(Order order) {
         if (order.getStatus() != OrderStatus.PENDING) {

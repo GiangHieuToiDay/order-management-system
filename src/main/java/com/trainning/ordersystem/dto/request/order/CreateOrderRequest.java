@@ -39,17 +39,9 @@ public class CreateOrderRequest {
     @Size(max = 255, message = "Ghi chú tối đa 255 ký tự")
     private String note;
 
-    /**
-     * true: Đặt hàng từ giỏ hàng hiện tại của customer
-     * false: Mua ngay theo danh sách items truyền vào
-     */
     @Builder.Default
     private boolean fromCart = false;
 
-    /**
-     * Danh sách ID các CartItem được tick chọn mua (nếu fromCart = true).
-     * Nếu null hoặc rỗng, mặc định mua toàn bộ giỏ hàng.
-     */
     private List<Long> cartItemIds;
 
     @Valid

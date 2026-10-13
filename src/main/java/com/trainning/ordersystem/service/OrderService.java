@@ -15,21 +15,23 @@ import java.util.List;
 
 public interface OrderService {
 
-    OrderDetailResponse placeOrder(Long customerId, CreateOrderRequest request);
+    OrderDetailResponse placeOrder(CreateOrderRequest request);
 
-    OrderDetailResponse getOrderById(Long orderId, Long currentCustomerId, boolean isAdminOrStaff);
+    OrderDetailResponse getOrderById(Long orderId);
 
-    OrderDetailResponse getOrderByCode(String orderCode, Long currentCustomerId, boolean isAdminOrStaff);
+    OrderDetailResponse getOrderByCode(String orderCode);
 
-    PageResponse<OrderSummaryResponse> getMyOrders(Long customerId, int page, int size);
+    PageResponse<OrderSummaryResponse> getMyOrders( int page, int size);
 
     PageResponse<OrderSummaryResponse> getAllOrders(String keyword, OrderStatus status, int page, int size);
 
-    OrderDetailResponse cancelMyOrder(Long orderId, Long customerId, String reason);
+    OrderDetailResponse cancelMyOrder(Long orderId, String reason);
 
-    OrderDetailResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request, User actor);
+    OrderDetailResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request);
 
     long countOrdersByStatus(OrderStatus status);
 
     List<OrderRevenueStatisticResponse> getRevenueStatistics(LocalDate startDate, LocalDate endDate, String groupBy);
+
+    OrderDetailResponse getOrderByIdInternal(Long orderId);
 }

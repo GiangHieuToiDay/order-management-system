@@ -1,8 +1,11 @@
 package com.trainning.ordersystem.repository;
 
+import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
+import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
 import com.trainning.ordersystem.entity.Order;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticProjection;
+import com.trainning.ordersystem.dto.response.report.PeriodOrderDetailResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,21 +20,71 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByOrderCode(String orderCode);
-    Page<Order> findByCustomerId(Long customerId, Pageable pageable);
+//    Page<Order> findByCustomerId(Long customerId, Pageable pageable);
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
     long countByStatus(OrderStatus status);
 
-    @Query(value = "SELECT o FROM Order o LEFT JOIN FETCH o.customer c LEFT JOIN FETCH c.user u WHERE " +
-            "(:keyword IS NULL OR :keyword = '' OR LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:status IS NULL OR o.status = :status)",
-           countQuery = "SELECT COUNT(o) FROM Order o WHERE " +
-            "(:keyword IS NULL OR :keyword = '' OR LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:status IS NULL OR o.status = :status)")
-    Page<Order> searchOrders(@Param("keyword") String keyword,
-                             @Param("status") OrderStatus status,
-                             Pageable pageable);
+    @Query("""
+    SELECT new com.trainning.ordersystem.dto.response.order.OrderDetailResponse(
+        o.id,o.orderCode,c.id, u.fullName,u.email,u.phone,u.fullName,u.phone,o.shippingAddress,null,o.totalAmount,o.status,o.paymentMethod,o.createdAt,o.updatedAt
+    )
+    FROM Order o
+    LEFT JOIN o.customer c
+    LEFT JOIN c.user u
+    WHERE o.orderCode = :orderCode
+""")
+    Optional<OrderDetailResponse> findDetailResponseByCode(@Param("orderCode") String orderCode);
+
+
+
+
+    @Query(
+            value = """
+            SELECT new com.trainning.ordersystem.dto.response.order.OrderSummaryResponse(
+                o.id,o.orderCode,c.id,u.fullName,u.fullName,o.totalAmount, o.status,o.paymentMethod,SIZE(o.orderItems),o.createdAt
+            )
+            FROM Order o
+            LEFT JOIN o.customer c
+            LEFT JOIN c.user u
+            WHERE c.id = :customerId
+        """,
+            countQuery = """
+            SELECT COUNT(o)
+            FROM Order o
+            WHERE o.customer.id = :customerId
+        """
+    )
+    Page<OrderSummaryResponse> findByCustomerId(@Param("customerId") Long customerId, Pageable pageable);
+
+
+    @Query(
+            value = """
+            SELECT new com.trainning.ordersystem.dto.response.order.OrderSummaryResponse(
+                o.id,o.orderCode,c.id,u.fullName,u.fullName,o.totalAmount,o.status,o.paymentMethod,SIZE(o.orderItems),o.createdAt
+            )
+            FROM Order o
+            LEFT JOIN o.customer c
+            LEFT JOIN c.user u
+            WHERE (:keyword IS NULL OR :keyword = '' 
+                   OR LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+                   OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:status IS NULL OR o.status = :status)
+        """,
+            countQuery = """
+            SELECT COUNT(o)
+            FROM Order o
+            WHERE (:keyword IS NULL OR :keyword = '' 
+                   OR LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+                   OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:status IS NULL OR o.status = :status)
+        """
+    )
+    Page<OrderSummaryResponse> searchOrders(
+            @Param("keyword") String keyword,
+            @Param("status") OrderStatus status,
+            Pageable pageable
+    );
+
 
     @Query(value = """
             WITH BaseOrders AS (
@@ -66,6 +119,32 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // dùng isnull do có thể k có đơn nào có status như trên có thể dẫn đến null dùng isnull để thay thế cái null đấy sẽ bằng 0
     // cast để cast sang dạng float
     // sum là tính tổng trng thái complete với canceled rồi * 100 / count tổng, dùng null if để tránh chia cho 0.
+
+    @Query("""
+        SELECT new com.trainning.ordersystem.dto.response.report.PeriodOrderDetailResponse(
+            o.id,
+            o.orderCode,
+            c.id,
+            u.fullName,
+            u.phone,
+            u.email,
+            o.totalAmount,
+            o.status,
+            o.paymentMethod,
+            o.createdAt
+        )
+        FROM Order o
+        LEFT JOIN o.customer c
+        LEFT JOIN c.user u
+        WHERE o.createdAt >= :startDate AND o.createdAt <= :endDate
+          AND o.status IN :statuses
+        ORDER BY o.createdAt DESC
+    """)
+    List<PeriodOrderDetailResponse> findPeriodOrderDetails(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("statuses") List<OrderStatus> statuses
+    );
 
 }
 
