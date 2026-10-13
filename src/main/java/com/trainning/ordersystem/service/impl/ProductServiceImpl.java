@@ -48,9 +48,9 @@ public class ProductServiceImpl implements ProductService {
     private final ProductSpecification productSpecification;
     private final CategorySpecification categorySpecification;
     private final RedisService redisService;
-    private final ProductMapper productMapper;
     private final ObjectMapper objectMapper;
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final ProductMapper productMapper;
 
 
     @Override
@@ -98,14 +98,16 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (response == null) {
-            Page<Product> productPage = productRepository.searchProducts(
-                    request.getKeyword(),
-                    request.getCategoryId(),
-                    request.getStatus(),
-                    request.getMinPrice(),
-                    request.getMaxPrice(),
-                    buildPageable(request)
-            );
+
+            Page<ProductSummaryResponse> productPage =
+                    productRepository.searchProductSummaries(
+                            request.getKeyword(),
+                            request.getCategoryId(),
+                            request.getStatus(),
+                            request.getMinPrice(),
+                            request.getMaxPrice(),
+                            buildPageable(request)
+                    );
 
             response = buildPageResponse(productPage);
 
@@ -153,15 +155,15 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductDetailResponse getProductById(Long id) {
-        Product product = productSpecification.getProductById(id);
-        ProductDetailResponse detail = productMapper.toDetailResponse(product);
+        ProductDetailResponse detail = productRepository.findDetailById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm với id: " + id));
 
         Integer realtimeStock = redisService.getStock(id);
         if (realtimeStock != null) {
             detail.setStockQuantity(realtimeStock);
         } else {
-            if (product.getStockQuantity() != null) {
-                redisService.setStock(id, product.getStockQuantity());
+            if (detail.getStockQuantity() != null) {
+                redisService.setStock(id, detail.getStockQuantity());
             }
         }
 
@@ -291,10 +293,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private PageResponse<ProductSummaryResponse> buildPageResponse(
-            Page<Product> productPage
+            Page<ProductSummaryResponse> productPage
     ) {
+
         return PageResponse.<ProductSummaryResponse>builder()
-                .content(productMapper.toSummaryResponseList(productPage.getContent()))
+                .content(productPage.getContent())
                 .pageNumber(productPage.getNumber())
                 .pageSize(productPage.getSize())
                 .totalElements(productPage.getTotalElements())

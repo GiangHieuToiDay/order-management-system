@@ -6,11 +6,12 @@ import com.trainning.ordersystem.entity.*;
 import com.trainning.ordersystem.entity.enums.TransactionType;
 import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
-import com.trainning.ordersystem.mapper.OrderMapper;
 import com.trainning.ordersystem.repository.CartItemRepository;
 import com.trainning.ordersystem.repository.InventoryTransactionRepository;
 import com.trainning.ordersystem.repository.OrderItemRepository;
 import com.trainning.ordersystem.repository.ProductRepository;
+import com.trainning.ordersystem.security.SecurityUtils;
+import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
 import com.trainning.ordersystem.service.OrderItemService;
 import com.trainning.ordersystem.service.RedisService;
 import com.trainning.ordersystem.specification.OrderItemSpecification;
@@ -40,7 +41,6 @@ public class OrderItemServiceImpl implements OrderItemService {
     private final ProductSpecification productSpecification;
     private final CartItemRepository cartItemRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
-    private final OrderMapper orderMapper;
     private final RedisService redisService;
 
     @Override
@@ -66,12 +66,10 @@ public class OrderItemServiceImpl implements OrderItemService {
     }
 
     @Override
-    public List<OrderItem> createOrderItemsFromCart(Order order, Long customerId) {
-        return createOrderItemsFromCart(order, customerId, null);
-    }
+    public List<OrderItem> createOrderItemsFromCart(Order order, List<Long> cartItemIds) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        Long customerId = userDetails.getCustomerId();
 
-    @Override
-    public List<OrderItem> createOrderItemsFromCart(Order order, Long customerId, List<Long> cartItemIds) {
         log.info("Khởi tạo danh sách OrderItem từ giỏ hàng cho customerId={}, cartItemIds={}", customerId, cartItemIds);
 
         List<CartItem> cartItems = cartItemRepository.findByCustomerIdAndOptionalIds(customerId, cartItemIds);
@@ -97,15 +95,18 @@ public class OrderItemServiceImpl implements OrderItemService {
     @Override
     public List<OrderItemResponse> getItemsByOrderId(Long orderId) {
         log.info("Lấy danh sách OrderItem theo orderId={}", orderId);
-        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
-        return mapToResponseList(items);
+        List<OrderItemResponse> items = orderItemRepository.findItemResponsesByOrderId(orderId);
+        return items;
     }
 
     @Override
     public OrderItemResponse getItemById(Long itemId) {
         log.info("Lấy chi tiết OrderItem theo itemId={}", itemId);
-        OrderItem item = orderItemSpecification.getOrderItemById(itemId);
-        return mapToResponse(item);
+        return orderItemRepository.findItemResponseById(itemId)
+                .orElseThrow(() -> new AppException(
+                        ErrorCode.VALIDATION_ERROR,
+                        "Không tìm thấy chi tiết sản phẩm đơn hàng với id = " + itemId
+                ));
     }
 
     @Override
@@ -159,7 +160,9 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     @Override
     @Transactional
-    public void restoreStockForOrderItems(List<OrderItem> items, String orderCode, User actor) {
+    public void restoreStockForOrderItems(List<OrderItem> items, String orderCode) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        User actor = userDetails.getUser();
         log.info("Hoàn trả tồn kho và ghi nhật ký nhập lại cho đơn hàng hủy orderCode={}", orderCode);
         orderItemSpecification.validateItemsNotEmpty(items);
 
@@ -216,30 +219,5 @@ public class OrderItemServiceImpl implements OrderItemService {
             return items.get(0).getOrder().getCustomer().getUser();
         }
         return null;
-    }
-
-    private List<OrderItemResponse> mapToResponseList(List<OrderItem> items) {
-        List<OrderItemResponse> responses = orderMapper.toItemResponseList(items);
-        if (responses != null && items != null) {
-            for (int i = 0; i < responses.size() && i < items.size(); i++) {
-                populateSubTotal(responses.get(i), items.get(i));
-            }
-        }
-        return responses;
-    }
-
-    private OrderItemResponse mapToResponse(OrderItem item) {
-        OrderItemResponse response = orderMapper.toItemResponse(item);
-        if (response != null && item != null) {
-            populateSubTotal(response, item);
-        }
-        return response;
-    }
-
-    private void populateSubTotal(OrderItemResponse response, OrderItem item) {
-        if (response != null && response.getSubTotal() == null
-                && item != null && item.getUnitPrice() != null && item.getQuantity() != null) {
-            response.setSubTotal(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
-        }
     }
 }

@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Builder
@@ -30,4 +32,8 @@ public class OrderRevenueStatisticResponse {
     private Double successRate;
 
     private Double cancellationRate;
+
+    @Builder.Default
+    private List<PeriodOrderDetailResponse> orders = new ArrayList<>();
 }
+

@@ -7,13 +7,13 @@ import com.trainning.ordersystem.dto.response.cart.CartResponse;
 public interface CartService {
 
 
-    CartResponse getCart(Long customerId);
+    CartResponse getCart();
 
-    CartResponse addToCart(Long customerId, AddToCartRequest request);
+    CartResponse addToCart( AddToCartRequest request);
 
-    CartResponse updateQuantity(Long customerId, Long cartItemId, UpdateCartQuantityRequest request);
+    CartResponse updateQuantity( Long cartItemId, UpdateCartQuantityRequest request);
 
-    CartResponse removeCartItem(Long customerId, Long cartItemId);
+    CartResponse removeCartItem( Long cartItemId);
 
-    void clearCart(Long customerId);
+    void clearCart();
 }

@@ -7,8 +7,9 @@ import com.trainning.ordersystem.dto.response.cart.CartResponse;
 import com.trainning.ordersystem.entity.CartItem;
 import com.trainning.ordersystem.entity.Customer;
 import com.trainning.ordersystem.entity.Product;
-import com.trainning.ordersystem.mapper.CartMapper;
 import com.trainning.ordersystem.repository.CartItemRepository;
+import com.trainning.ordersystem.security.SecurityUtils;
+import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
 import com.trainning.ordersystem.service.CartService;
 import com.trainning.ordersystem.specification.CartSpecification;
 import com.trainning.ordersystem.specification.CustomerSpecification;
@@ -32,10 +33,11 @@ public class CartServiceImpl implements CartService {
     private final CartSpecification cartSpecification;
     private final CustomerSpecification customerSpecification;
     private final ProductSpecification productSpecification;
-    private final CartMapper cartMapper;
 
     @Override
-    public CartResponse getCart(Long customerId) {
+    public CartResponse getCart() {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        Long customerId = userDetails.getCustomerId();
         log.info("Lấy thông tin giỏ hàng của customerId={}", customerId);
         customerSpecification.findCustomerById(customerId);
         return buildCartResponse(customerId);
@@ -43,7 +45,9 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public CartResponse addToCart(Long customerId, AddToCartRequest request) {
+    public CartResponse addToCart( AddToCartRequest request) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        Long customerId = userDetails.getCustomerId();
         log.info("Thêm sản phẩm productId={} vào giỏ hàng của customerId={}", request.getProductId(), customerId);
 
         Customer customer = customerSpecification.findCustomerById(customerId);
@@ -71,7 +75,9 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public CartResponse updateQuantity(Long customerId, Long cartItemId, UpdateCartQuantityRequest request) {
+    public CartResponse updateQuantity( Long cartItemId, UpdateCartQuantityRequest request) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        Long customerId = userDetails.getCustomerId();
         log.info("Cập nhật số lượng cartItemId={} thành {} cho customerId={}", cartItemId, request.getQuantity(), customerId);
 
         CartItem cartItem = cartSpecification.getCartItemById(cartItemId);
@@ -90,7 +96,9 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public CartResponse removeCartItem(Long customerId, Long cartItemId) {
+    public CartResponse removeCartItem( Long cartItemId) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        Long customerId = userDetails.getCustomerId();
         log.info("Xóa cartItemId={} khỏi giỏ hàng của customerId={}", cartItemId, customerId);
 
         CartItem cartItem = cartSpecification.getCartItemById(cartItemId);
@@ -103,15 +111,16 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public void clearCart(Long customerId) {
+    public void clearCart() {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        Long customerId = userDetails.getCustomerId();
         log.info("Xóa toàn bộ giỏ hàng của customerId={}", customerId);
         customerSpecification.findCustomerById(customerId);
         cartItemRepository.deleteByCustomerId(customerId);
     }
 
     private CartResponse buildCartResponse(Long customerId) {
-        List<CartItem> cartItems = cartItemRepository.findByCustomerId(customerId);
-        List<CartItemResponse> itemResponses = cartMapper.toResponseList(cartItems);
+        List<CartItemResponse> itemResponses = cartItemRepository.findItemResponsesByCustomerId(customerId);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         if (itemResponses != null && !itemResponses.isEmpty()) {

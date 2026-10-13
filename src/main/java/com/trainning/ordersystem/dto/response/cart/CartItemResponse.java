@@ -21,4 +21,25 @@ public class CartItemResponse {
     private BigDecimal unitPrice;
     private Integer quantity;
     private BigDecimal subTotal;
+
+    public CartItemResponse(
+            Long id,
+            Long productId,
+            String productName,
+            String productSku,
+            String productImage,
+            BigDecimal unitPrice,
+            Integer quantity
+    ) {
+        this.id = id;
+        this.productId = productId;
+        this.productName = productName;
+        this.productSku = productSku;
+        this.productImage = productImage;
+        this.unitPrice = unitPrice;
+        this.quantity = quantity;
+        this.subTotal = (unitPrice != null && quantity != null)
+                ? unitPrice.multiply(BigDecimal.valueOf(quantity))
+                : BigDecimal.ZERO;
+    }
 }

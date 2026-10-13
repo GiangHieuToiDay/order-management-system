@@ -5,6 +5,8 @@ import com.trainning.ordersystem.dto.request.category.CategoryRequest;
 import com.trainning.ordersystem.dto.response.category.CategoryResponse;
 import com.trainning.ordersystem.entity.Category;
 import com.trainning.ordersystem.entity.enums.CategoryStatus;
+import com.trainning.ordersystem.exception.AppException;
+import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.mapper.CategoryMapper;
 import com.trainning.ordersystem.repository.CategoryRepository;
 import com.trainning.ordersystem.service.CategoryService;
@@ -52,10 +54,10 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public PageResponse<CategoryResponse> getCategories(int page, int size, String keyword, CategoryStatus status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<Category> categoryPage = categoryRepository.searchCategories(keyword, status, pageable);
+        Page<CategoryResponse> categoryPage = categoryRepository.searchCategoryResponses(keyword, status, pageable);
 
         return PageResponse.<CategoryResponse>builder()
-                .content(categoryMapper.toResponseList(categoryPage.getContent()))
+                .content(categoryPage.getContent())
                 .pageNumber(categoryPage.getNumber())
                 .pageSize(categoryPage.getSize())
                 .totalElements(categoryPage.getTotalElements())
@@ -67,15 +69,14 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryResponse> getActiveCategories() {
-        List<Category> activeCategories = categoryRepository.findByStatus(CategoryStatus.ACTIVE);
-        return categoryMapper.toResponseList(activeCategories);
+        return categoryRepository.findCategoryResponsesByStatus(CategoryStatus.ACTIVE);
     }
 
 
     @Override
     public CategoryResponse getCategoryById(Long id) {
-        Category category = categorySpecification.getCategoryById(id);
-        return categoryMapper.toResponse(category);
+        return categoryRepository.findCategoryResponseById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND, "Không tìm thấy danh mục với id = " + id));
     }
 
 

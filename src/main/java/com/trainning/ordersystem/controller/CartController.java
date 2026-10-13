@@ -9,6 +9,7 @@ import com.trainning.ordersystem.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,47 +20,42 @@ public class CartController {
     private final CartService cartService;
     private final CustomerContext customerContext;
 
+    @PreAuthorize("hasAnyRole('CUSTOMER')")
     @GetMapping
-    public ResponseEntity<ApiResponse<CartResponse>> getCart(
-            @RequestParam(required = false) Long customerId) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        CartResponse response = cartService.getCart(effectiveCustomerId);
+    public ResponseEntity<ApiResponse<CartResponse>> getCart() {
+        CartResponse response = cartService.getCart();
         return ResponseEntity.ok(ApiResponse.ok("Lấy giỏ hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('CUSTOMER')")
     @PostMapping("/items")
     public ResponseEntity<ApiResponse<CartResponse>> addToCart(
-            @RequestParam(required = false) Long customerId,
             @Valid @RequestBody AddToCartRequest request) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        CartResponse response = cartService.addToCart(effectiveCustomerId, request);
+        CartResponse response = cartService.addToCart(request);
         return ResponseEntity.ok(ApiResponse.ok("Thêm vào giỏ hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('CUSTOMER')")
     @PutMapping("/items/{cartItemId}")
     public ResponseEntity<ApiResponse<CartResponse>> updateQuantity(
-            @RequestParam(required = false) Long customerId,
             @PathVariable Long cartItemId,
             @Valid @RequestBody UpdateCartQuantityRequest request) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        CartResponse response = cartService.updateQuantity(effectiveCustomerId, cartItemId, request);
+        CartResponse response = cartService.updateQuantity(cartItemId, request);
         return ResponseEntity.ok(ApiResponse.ok("Cập nhật số lượng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('CUSTOMER')")
     @DeleteMapping("/items/{cartItemId}")
     public ResponseEntity<ApiResponse<CartResponse>> removeCartItem(
-            @RequestParam(required = false) Long customerId,
             @PathVariable Long cartItemId) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        CartResponse response = cartService.removeCartItem(effectiveCustomerId, cartItemId);
+        CartResponse response = cartService.removeCartItem( cartItemId);
         return ResponseEntity.ok(ApiResponse.ok("Xóa sản phẩm khỏi giỏ hàng thành công", response));
     }
 
+    @PreAuthorize("hasAnyRole('CUSTOMER')")
     @DeleteMapping("/clear")
-    public ResponseEntity<ApiResponse<Void>> clearCart(
-            @RequestParam(required = false) Long customerId) {
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-        cartService.clearCart(effectiveCustomerId);
+    public ResponseEntity<ApiResponse<Void>> clearCart() {
+        cartService.clearCart();
         return ResponseEntity.ok(ApiResponse.ok("Xóa sạch giỏ hàng thành công", null));
     }
 }

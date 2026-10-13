@@ -9,8 +9,14 @@ spring:
     password: ${RABBITMQ_PASSWORD:guest}
     listener:
       simple:
-        acknowledge-mode: manual # Tắt auto-ack, quản lý ack bằng tay
+        acknowledge-mode: manual
         prefetch: 10
+        retry:
+          enabled: true
+          max-retries: 2
+          initial-interval: 1000ms
+          multiplier: 2.0
+          max-interval: 10000ms
   data:
     redis:
       host: ${REDIS_HOST:localhost}

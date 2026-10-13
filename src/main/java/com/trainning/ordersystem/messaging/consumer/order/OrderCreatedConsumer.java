@@ -1,3 +1,4 @@
+
 package com.trainning.ordersystem.messaging.consumer.order;
 
 import com.rabbitmq.client.Channel;
@@ -28,7 +29,8 @@ public class OrderCreatedConsumer {
     ) throws IOException {
 
         try {
-            log.info("Nhận OrderCreatedEvent: orderId={}", event.getOrderId());
+            log.info("Nhận OrderCreatedEvent: orderId={}",
+                    event.getOrderId());
 
             notificationService.sendOrderCreatedEmail(event);
 
@@ -46,10 +48,11 @@ public class OrderCreatedConsumer {
 
         } catch (Exception ex) {
 
-            log.error("Lỗi tạm khi xử lý orderId={}",
+            log.error("Lỗi khi xử lý orderId={}",
                     event.getOrderId(), ex);
 
-            channel.basicNack(deliveryTag, false, true);
+            // Ném exception để Spring Retry xử lý
+            throw new RuntimeException(ex);
         }
     }
 }

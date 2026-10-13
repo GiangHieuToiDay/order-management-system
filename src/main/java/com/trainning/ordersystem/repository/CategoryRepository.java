@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.repository;
 
+import com.trainning.ordersystem.dto.response.category.CategoryResponse;
 import com.trainning.ordersystem.entity.Category;
 import com.trainning.ordersystem.entity.enums.CategoryStatus;
 import org.springframework.data.domain.Page;
@@ -27,4 +28,40 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     Page<Category> searchCategories(@Param("keyword") String keyword,
                                    @Param("status") CategoryStatus status,
                                    Pageable pageable);
+
+    @Query(value = """
+        SELECT new com.trainning.ordersystem.dto.response.category.CategoryResponse(
+            c.id, c.name, c.description, c.status, c.createdAt, c.updatedAt
+        )
+        FROM Category c
+        WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:status IS NULL OR c.status = :status)
+    """,
+    countQuery = """
+        SELECT COUNT(c)
+        FROM Category c
+        WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:status IS NULL OR c.status = :status)
+    """)
+    Page<CategoryResponse> searchCategoryResponses(@Param("keyword") String keyword,
+                                                   @Param("status") CategoryStatus status,
+                                                   Pageable pageable);
+
+    @Query("""
+        SELECT new com.trainning.ordersystem.dto.response.category.CategoryResponse(
+            c.id, c.name, c.description, c.status, c.createdAt, c.updatedAt
+        )
+        FROM Category c
+        WHERE c.status = :status
+    """)
+    List<CategoryResponse> findCategoryResponsesByStatus(@Param("status") CategoryStatus status);
+
+    @Query("""
+        SELECT new com.trainning.ordersystem.dto.response.category.CategoryResponse(
+            c.id, c.name, c.description, c.status, c.createdAt, c.updatedAt
+        )
+        FROM Category c
+        WHERE c.id = :id
+    """)
+    Optional<CategoryResponse> findCategoryResponseById(@Param("id") Long id);
 }

@@ -35,21 +35,18 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public List<RoleResponse> getAllRoles() {
-        List<Role> roles = roleRepository.findAll();
-        return roleMapper.toResponseList(roles);
+        return roleRepository.findAllRoleResponses();
     }
 
     @Override
     public RoleResponse getRoleById(Long id) {
-        Role role = roleRepository.findById(id)
+        return roleRepository.findRoleResponseById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND, "Không tìm thấy vai trò với id = " + id));
-        return roleMapper.toResponse(role);
     }
 
     @Override
     public RoleResponse getRoleByName(String name) {
-        Role role = roleRepository.findByName(name)
+        return roleRepository.findRoleResponseByName(name)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND, "Không tìm thấy vai trò '" + name + "'"));
-        return roleMapper.toResponse(role);
     }
 }

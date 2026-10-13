@@ -1,7 +1,6 @@
 package com.trainning.ordersystem.service.impl;
 
 import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
-import com.trainning.ordersystem.entity.Order;
 import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
@@ -21,12 +20,11 @@ public class OrderNotificationServiceImpl implements OrderNotificationService {
     private final ReportService reportService;
     private final OrderService orderService;
 
-
-
-
     public void sendOrderCreatedEmail(OrderCreatedEvent event) {
 
-        OrderDetailResponse order = orderService.getOrderById(event.getOrderId(), event.getCustomerId(), true);
+
+        OrderDetailResponse order = orderService.getOrderByIdInternal(event.getOrderId());
+
 
         byte[] pdf = null;
 

@@ -39,7 +39,7 @@ public class ReportController {
 
         log.info("Yêu cầu xuất hóa đơn PDF cho đơn hàng ID={}, customerId={}, isAdminOrStaff={}",
                 orderId, effectiveCustomerId, adminOrStaff);
-        OrderDetailResponse order = orderService.getOrderById(orderId, effectiveCustomerId, adminOrStaff);
+        OrderDetailResponse order = orderService.getOrderById(orderId);
         byte[] pdfBytes = reportService.generateBill(order);
 
         HttpHeaders headers = new HttpHeaders();
@@ -64,7 +64,7 @@ public class ReportController {
 
         log.info("Yêu cầu xuất hóa đơn PDF cho đơn hàng mã={}, customerId={}, isAdminOrStaff={}",
                 orderCode, effectiveCustomerId, adminOrStaff);
-        OrderDetailResponse order = orderService.getOrderByCode(orderCode, effectiveCustomerId, adminOrStaff);
+        OrderDetailResponse order = orderService.getOrderByCode(orderCode);
         byte[] pdfBytes = reportService.generateBill(order);
 
         HttpHeaders headers = new HttpHeaders();

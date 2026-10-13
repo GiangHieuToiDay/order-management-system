@@ -201,7 +201,8 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserProfileResponse getMyProfile() {
         User currentUser = getCurrentUser();
-        return toUserProfileWithCustomerInfo(currentUser);
+        return userRepository.findProfileById(currentUser.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Không tìm thấy thông tin người dùng"));
     }
 
     @Override
@@ -262,18 +263,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getUserById(Long userId) {
-        User user = userSpecification.getUserById(userId);
-        return toUserProfileWithCustomerInfo(user);
+        return userRepository.findProfileById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Không tìm thấy người dùng với id = " + userId));
     }
 
     @Override
     public PageResponse<UserProfileResponse> getUsers(int page, int size, String keyword, Long roleId, UserStatus status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<User> usersPage = userRepository.searchUsers(keyword, roleId, status, pageable);
+        Page<UserProfileResponse> usersPage = userRepository.searchUsers(keyword, roleId, status, pageable);
 
-        List<UserProfileResponse> responses = usersPage.getContent().stream()
-                .map(this::toUserProfileWithCustomerInfo)
-                .toList();
+        List<UserProfileResponse> responses = usersPage.getContent().stream().toList();
 
         return PageResponse.<UserProfileResponse>builder()
                 .content(responses)
@@ -299,10 +298,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getCustomerById(Long customerId) {
-        Customer customer = customerSpecification.findCustomerById(customerId);
-        UserProfileResponse response = userMapper.toProfileResponse(customer.getUser());
-        userMapper.enrichWithCustomer(customer, response);
-        return response;
+        return userRepository.findProfileByCustomerId(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND, "Không tìm thấy khách hàng với id = " + customerId));
     }
 
     @Override

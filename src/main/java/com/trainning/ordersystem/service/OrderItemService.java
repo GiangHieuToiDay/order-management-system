@@ -14,9 +14,7 @@ public interface OrderItemService {
 
     List<OrderItem> createOrderItems(Order order, List<OrderItemRequest> itemRequests);
 
-    List<OrderItem> createOrderItemsFromCart(Order order, Long customerId);
-
-    List<OrderItem> createOrderItemsFromCart(Order order, Long customerId, List<Long> cartItemIds);
+    List<OrderItem> createOrderItemsFromCart(Order order, List<Long> cartItemIds);
 
     List<OrderItemResponse> getItemsByOrderId(Long orderId);
 
@@ -24,7 +22,7 @@ public interface OrderItemService {
 
     void deductStock(String orderCode, List<OrderItem> items);
 
-    void restoreStockForOrderItems(List<OrderItem> items, String orderCode, User actor);
+    void restoreStockForOrderItems(List<OrderItem> items, String orderCode);
 
     BigDecimal calculateTotalAmount(List<OrderItem> items);
 }

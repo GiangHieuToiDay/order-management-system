@@ -8,14 +8,16 @@ import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
 import com.trainning.ordersystem.entity.*;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
 import com.trainning.ordersystem.entity.enums.PaymentMethod;
-import com.trainning.ordersystem.mapper.OrderMapper;
 import com.trainning.ordersystem.dto.request.order.OrderItemRequest;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticProjection;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
+import com.trainning.ordersystem.dto.response.report.PeriodOrderDetailResponse;
 import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
 import com.trainning.ordersystem.messaging.event.order.OrderItemEvent;
 import com.trainning.ordersystem.repository.CartItemRepository;
 import com.trainning.ordersystem.repository.OrderRepository;
+import com.trainning.ordersystem.security.SecurityUtils;
+import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
 import com.trainning.ordersystem.service.CartService;
 import com.trainning.ordersystem.service.OrderItemService;
 import com.trainning.ordersystem.service.OrderService;
@@ -31,19 +33,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -52,18 +55,21 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemService orderItemService;
     private final CartItemRepository cartItemRepository;
     private final CartService cartService;
-    private final OrderMapper orderMapper;
     private final RedisService redisService;
     private final ApplicationEventPublisher eventPublisher;
+    private final TransactionTemplate orderTransactionTemplate;
 
     @Override
-    @Transactional
-    public OrderDetailResponse placeOrder(Long customerId, CreateOrderRequest request) {
+    public OrderDetailResponse placeOrder( CreateOrderRequest request) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        Long customerId = userDetails.getCustomerId();
         log.info("Khách hàng customerId={} tiến hành đặt hàng", customerId);
+
 
         List<Long> productIds = extractProductIds(customerId, request);
 
-        return redisService.executeWithProductLocks(productIds, () -> doPlaceOrder(customerId,request));
+        return redisService.executeWithProductLocks(productIds,
+                () -> orderTransactionTemplate.execute(status -> doPlaceOrder(customerId, request)));
     }
 
     private OrderDetailResponse doPlaceOrder(Long customerId, CreateOrderRequest request) {
@@ -73,7 +79,7 @@ public class OrderServiceImpl implements OrderService {
 
         List<OrderItem> orderItems;
         if (request.isFromCart()) {
-            orderItems = orderItemService.createOrderItemsFromCart(order, customerId, request.getCartItemIds());
+            orderItems = orderItemService.createOrderItemsFromCart(order, request.getCartItemIds());
         } else {
             orderItems = orderItemService.createOrderItems(order, request.getItems());
         }
@@ -91,91 +97,89 @@ public class OrderServiceImpl implements OrderService {
             publishEventOrder(savedOrder);
         }
 
-
-
         if (request.isFromCart()) {
             if (request.getCartItemIds() != null && !request.getCartItemIds().isEmpty()) {
                 cartItemRepository.deleteAllById(request.getCartItemIds());
             } else {
-                cartService.clearCart(customerId);
+                cartService.clearCart();
             }
         }
-
         log.info("Đặt hàng thành công với mã đơn: {}", savedOrder.getOrderCode());
-        return orderMapper.toDetailResponse(savedOrder);
+        return OrderDetailResponse.from(savedOrder);
     }
 
     @Override
-    public OrderDetailResponse getOrderById(Long orderId, Long currentCustomerId, boolean isAdminOrStaff) {
+    @Transactional(readOnly = true)
+    public OrderDetailResponse getOrderById(Long orderId) {
         log.info("Xem chi tiết đơn hàng orderId={}", orderId);
         Order order = orderSpecification.getOrderById(orderId);
 
-        if (!isAdminOrStaff) {
-            orderSpecification.validateOrderOwnership(order, currentCustomerId);
-        }
+        orderSpecification.validateOrderOwnership(order);
 
-        return orderMapper.toDetailResponse(order);
+        return OrderDetailResponse.from(order);
     }
 
     @Override
-    public OrderDetailResponse getOrderByCode(String orderCode, Long currentCustomerId, boolean isAdminOrStaff) {
+    @Transactional(readOnly = true)
+    public OrderDetailResponse getOrderByCode(String orderCode) {
         log.info("Xem chi tiết đơn hàng theo orderCode={}", orderCode);
         Order order = orderSpecification.getOrderByCode(orderCode);
 
-        if (!isAdminOrStaff) {
-            orderSpecification.validateOrderOwnership(order, currentCustomerId);
-        }
+        orderSpecification.validateOrderOwnership(order);
 
-        return orderMapper.toDetailResponse(order);
+        return OrderDetailResponse.from(order);
     }
 
     @Override
-    public PageResponse<OrderSummaryResponse> getMyOrders(Long customerId, int page, int size) {
-        log.info("Lấy lịch sử đơn hàng của customerId={}, page={}, size={}", customerId, page, size);
-        customerSpecification.findCustomerById(customerId);
+    @Transactional(readOnly = true)
+    public PageResponse<OrderSummaryResponse> getMyOrders(int page, int size) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        log.info("Lấy lịch sử đơn hàng của customerId={}, page={}, size={}", userDetails.getUser(), page, size);
+        customerSpecification.findCustomerById(userDetails.getCustomerId());
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<Order> orderPage = orderRepository.findByCustomerId(customerId, pageable);
+        Page<OrderSummaryResponse> orderPage = orderRepository.findByCustomerId(userDetails.getCustomerId(), pageable);
         return toPageResponse(orderPage);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResponse<OrderSummaryResponse> getAllOrders(String keyword, OrderStatus status, int page, int size) {
         log.info("Tìm kiếm đơn hàng: keyword={}, status={}, page={}, size={}", keyword, status, page, size);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<Order> orderPage = orderRepository.searchOrders(keyword, status, pageable);
+        Page<OrderSummaryResponse> orderPage = orderRepository.searchOrders(keyword, status, pageable);
 
         return toPageResponse(orderPage);
     }
 
     @Override
     @Transactional
-    public OrderDetailResponse cancelMyOrder(Long orderId, Long customerId, String reason) {
-        log.info("Khách hàng customerId={} yêu cầu hủy đơn hàng orderId={}", customerId, orderId);
+    public OrderDetailResponse cancelMyOrder(Long orderId, String reason) {
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        log.info("Khách hàng customerId={} yêu cầu hủy đơn hàng orderId={}", userDetails.getUserId(), orderId);
 
         Order order = orderSpecification.getOrderById(orderId);
-        orderSpecification.validateOrderOwnership(order, customerId);
+        orderSpecification.validateOrderOwnership(order);
         orderSpecification.validateCanCancel(order);
 
         order.setStatus(OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
 
-        User actor = order.getCustomer() != null ? order.getCustomer().getUser() : null;
-        orderItemService.restoreStockForOrderItems(order.getOrderItems(), order.getOrderCode(), actor);
+        orderItemService.restoreStockForOrderItems(order.getOrderItems(), order.getOrderCode());
 
         log.info("Hủy đơn hàng {} thành công. Lý do: {}", savedOrder.getOrderCode(), reason);
-        return orderMapper.toDetailResponse(savedOrder);
+        return OrderDetailResponse.from(savedOrder);
     }
 
     @Override
     @Transactional
-    public OrderDetailResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request, User actor) {
+    public OrderDetailResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request) {
         log.info("Cập nhật trạng thái đơn hàng orderId={} thành {}", orderId, request.getStatus());
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
 
         Order order = orderSpecification.getOrderById(orderId);
         OrderStatus oldStatus = order.getStatus();
         OrderStatus newStatus = request.getStatus();
-
 
         orderSpecification.validateStatusTransition(oldStatus, newStatus);
 
@@ -186,12 +190,11 @@ public class OrderServiceImpl implements OrderService {
             publishEventOrder(savedOrder);
         }
 
-
         if (newStatus == OrderStatus.CANCELLED && oldStatus != OrderStatus.CANCELLED) {
-            orderItemService.restoreStockForOrderItems(order.getOrderItems(), order.getOrderCode(), actor);
+            orderItemService.restoreStockForOrderItems(order.getOrderItems(), order.getOrderCode());
         }
 
-        return orderMapper.toDetailResponse(savedOrder);
+        return OrderDetailResponse.from(savedOrder);
     }
 
     @Override
@@ -222,47 +225,101 @@ public class OrderServiceImpl implements OrderService {
                 startDateTime, endDateTime, normalizedGroupBy
         );
 
-        return projections.stream()
-                .map(p -> OrderRevenueStatisticResponse.builder()
-                        .period(p.getPeriod())
-                        .totalOrders(p.getTotalOrders())
-                        .completedOrders(p.getCompletedOrders())
-                        .confirmedOrders(p.getConfirmedOrders())
-                        .cancelledOrders(p.getCancelledOrders())
-                        .pendingOrders(p.getPendingOrders())
-                        .totalRevenue(p.getTotalRevenue())
-                        .successRate(p.getSuccessRate())
-                        .cancellationRate(p.getCancellationRate())
-                        .build())
-                .toList();
+        List<PeriodOrderDetailResponse> orderDetails = orderRepository.findPeriodOrderDetails(
+                startDateTime, endDateTime, List.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED)
+        );
+
+        DateTimeFormatter formatter = "DAY".equals(normalizedGroupBy)
+                ? DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                : DateTimeFormatter.ofPattern("yyyy-MM");
+
+        Map<String, List<PeriodOrderDetailResponse>> ordersByPeriod = new HashMap<>();
+
+        for (PeriodOrderDetailResponse order : orderDetails) {
+            if (order.getCreatedAt() == null) {
+                continue;
+            }
+
+            String date = order.getCreatedAt().format(formatter);
+
+            if (!ordersByPeriod.containsKey(date)) {
+                ordersByPeriod.put(date, new ArrayList<>());
+            }
+
+            ordersByPeriod.get(date).add(order);
+        }
+
+        List<OrderRevenueStatisticResponse> responses = new ArrayList<>();
+
+        for (OrderRevenueStatisticProjection p : projections) {
+            OrderRevenueStatisticResponse response =
+                    OrderRevenueStatisticResponse.builder()
+                            .period(p.getPeriod())
+                            .totalOrders(p.getTotalOrders())
+                            .completedOrders(p.getCompletedOrders())
+                            .confirmedOrders(p.getConfirmedOrders())
+                            .cancelledOrders(p.getCancelledOrders())
+                            .pendingOrders(p.getPendingOrders())
+                            .totalRevenue(p.getTotalRevenue())
+                            .successRate(p.getSuccessRate())
+                            .cancellationRate(p.getCancellationRate())
+                            .orders(ordersByPeriod.getOrDefault(
+                                    p.getPeriod(), Collections.emptyList()))
+                            .build();
+
+            responses.add(response);
+        }
+
+        return responses;
     }
 
     private List<Long> extractProductIds(Long customerId, CreateOrderRequest request) {
         List<Long> productIds = new ArrayList<>();
         if (request.isFromCart()) {
-            List<CartItem> cartItems = cartItemRepository.findByCustomerIdAndOptionalIds(customerId, request.getCartItemIds());
-            if (cartItems != null) {
-                for (CartItem item : cartItems) {
-                    if (item.getProduct() != null && item.getProduct().getId() != null) {
-                        productIds.add(item.getProduct().getId());
-                    }
+            // Trường hợp đặt hàng từ giỏ hàng
+            log.info("-------------------------------------Mua Hàng Từ Cart---------------------------------------");
+            List<CartItem> cartItems = cartItemRepository.findByCustomerIdAndOptionalIds( customerId, request.getCartItemIds());
+
+            if (cartItems == null) {
+                return productIds;
+            }
+
+            for (CartItem cartItem : cartItems) {
+                if (cartItem.getProduct() == null) {
+                    continue;
+                }
+                Long productId = cartItem.getProduct().getId();
+                if (productId != null) {
+                    productIds.add(productId);
                 }
             }
-        } else if (request.getItems() != null) {
-            for (OrderItemRequest item : request.getItems()) {
-                if (item.getProductId() != null) {
-                    productIds.add(item.getProductId());
+
+        } else {
+            // Trường hợp mua hàng trực tiếp
+            log.info("-------------------------------------Mua Hàng Trực Tiếp---------------------------------------");
+            List<OrderItemRequest> items = request.getItems();
+
+            if (items == null) {
+                return productIds;
+            }
+
+            for (OrderItemRequest item : items) {
+                Long productId = item.getProductId();
+                if (productId != null) {
+                    productIds.add(productId);
                 }
             }
+
         }
+
         return productIds;
     }
 
     private PageResponse<OrderSummaryResponse> toPageResponse(
-            Page<Order> orderPage
+            Page<OrderSummaryResponse> orderPage
     ) {
         return PageResponse.<OrderSummaryResponse>builder()
-                .content(orderMapper.toSummaryResponseList(orderPage.getContent()))
+                .content(orderPage.stream().toList())
                 .pageNumber(orderPage.getNumber())
                 .pageSize(orderPage.getSize())
                 .totalElements(orderPage.getTotalElements())
@@ -283,6 +340,14 @@ public class OrderServiceImpl implements OrderService {
         );
         eventPublisher.publishEvent(orderCreatedEvent);
     }
+
+    @Transactional(readOnly = true)
+    public OrderDetailResponse getOrderByIdInternal(Long orderId) {
+        Order order = orderSpecification.getOrderById(orderId);
+        return OrderDetailResponse.from(order);
+    }
+
+
 
 }
 
