@@ -4,7 +4,6 @@ import com.trainning.ordersystem.dto.common.ApiResponse;
 import com.trainning.ordersystem.dto.request.cart.AddToCartRequest;
 import com.trainning.ordersystem.dto.request.cart.UpdateCartQuantityRequest;
 import com.trainning.ordersystem.dto.response.cart.CartResponse;
-import com.trainning.ordersystem.security.CustomerContext;
 import com.trainning.ordersystem.service.CartService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 public class CartController {
 
     private final CartService cartService;
-    private final CustomerContext customerContext;
 
     @PreAuthorize("hasAnyRole('CUSTOMER')")
     @GetMapping

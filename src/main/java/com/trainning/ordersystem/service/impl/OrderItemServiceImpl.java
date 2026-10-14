@@ -36,7 +36,6 @@ public class OrderItemServiceImpl implements OrderItemService {
 
     private final OrderItemRepository orderItemRepository;
     private final OrderItemSpecification orderItemSpecification;
-    private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final ProductSpecification productSpecification;
     private final CartItemRepository cartItemRepository;
@@ -116,18 +115,8 @@ public class OrderItemServiceImpl implements OrderItemService {
         if (items == null || items.isEmpty()) {
             return;
         }
-
-        User actor = null;
-        if (items.get(0).getOrder() != null && items.get(0).getOrder().getCustomer() != null) {
-            actor = items.get(0).getOrder().getCustomer().getUser();
-        }
-
-        if (actor == null) {
-            Optional<Order> orderOpt = orderRepository.findByOrderCode(orderCode);
-            if (orderOpt.isPresent() && orderOpt.get().getCustomer() != null) {
-                actor = orderOpt.get().getCustomer().getUser();
-            }
-        }
+        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+        User actor = userDetails.getUser();
 
         for (OrderItem item : items) {
             Product product = productSpecification.getProductById(item.getProduct().getId());
@@ -147,13 +136,7 @@ public class OrderItemServiceImpl implements OrderItemService {
                 redisService.setStock(product.getId(), newStock);
             }
 
-            InventoryTransaction transaction = new InventoryTransaction();
-            transaction.setProduct(product);
-            transaction.setType(TransactionType.OUT);
-            transaction.setQuantity(item.getQuantity());
-            transaction.setReason("Xuất kho cho đơn hàng " + orderCode);
-            transaction.setCreatedBy(actor);
-            inventoryTransactionRepository.save(transaction);
+            traceInventoryTransaction(product,TransactionType.OUT,item.getQuantity(), orderCode, actor);
         }
 
     }
@@ -166,8 +149,6 @@ public class OrderItemServiceImpl implements OrderItemService {
         log.info("Hoàn trả tồn kho và ghi nhật ký nhập lại cho đơn hàng hủy orderCode={}", orderCode);
         orderItemSpecification.validateItemsNotEmpty(items);
 
-        User transactionUser = resolveTransactionActor(items, actor);
-
         for (OrderItem item : items) {
             Product product = item.getProduct();
             productRepository.addStock(product.getId(), item.getQuantity());
@@ -179,13 +160,7 @@ public class OrderItemServiceImpl implements OrderItemService {
                 redisService.setStock(product.getId(), newStock);
             }
 
-            InventoryTransaction transaction = new InventoryTransaction();
-            transaction.setProduct(product);
-            transaction.setType(TransactionType.IN);
-            transaction.setReason("Hoàn kho do hủy đơn hàng " + orderCode);
-            transaction.setCreatedBy(transactionUser);
-            transaction.setQuantity(item.getQuantity());
-            inventoryTransactionRepository.save(transaction);
+            traceInventoryTransaction(product, TransactionType.IN, item.getQuantity(), orderCode ,actor);
         }
     }
 
@@ -209,15 +184,14 @@ public class OrderItemServiceImpl implements OrderItemService {
         return total;
     }
 
-    private User resolveTransactionActor(List<OrderItem> items, User actor) {
-        if (actor != null) {
-            return actor;
-        }
-        if (items != null && !items.isEmpty()
-                && items.get(0).getOrder() != null
-                && items.get(0).getOrder().getCustomer() != null) {
-            return items.get(0).getOrder().getCustomer().getUser();
-        }
-        return null;
+    private void traceInventoryTransaction(Product product, TransactionType type ,Integer quantity, String orderCode ,User actor){
+        InventoryTransaction transaction = new InventoryTransaction();
+        transaction.setProduct(product);
+        transaction.setType(type);
+        transaction.setQuantity(quantity);
+        transaction.setReason("Xuất kho cho đơn hàng " + orderCode);
+        transaction.setCreatedBy(actor);
+        inventoryTransactionRepository.save(transaction);
     }
+
 }

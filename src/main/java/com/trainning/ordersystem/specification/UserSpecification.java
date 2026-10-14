@@ -30,30 +30,12 @@ public class UserSpecification {
         }
     }
 
-    public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.INVALID_CREDENTIALS,
-                        "Email hoặc mật khẩu không chính xác"
-                ));
-    }
-
     public User getUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.USER_NOT_FOUND,
                         "Không tìm thấy người dùng với id = " + userId
                 ));
-    }
-
-    public void validateLoginCredentials(User user, String rawPassword) {
-        boolean matches = passwordEncoder.matches(rawPassword, user.getPassword()) || user.getPassword().equals(rawPassword);
-        if (!matches) {
-            throw new AppException(ErrorCode.INVALID_CREDENTIALS, "Email hoặc mật khẩu không chính xác");
-        }
-        if (user.getStatus() == UserStatus.LOCKED) {
-            throw new AppException(ErrorCode.ACCOUNT_LOCKED);
-        }
     }
 
     public void validatePasswordChange(User user, String oldPassword, String newPassword, String confirmPassword) {

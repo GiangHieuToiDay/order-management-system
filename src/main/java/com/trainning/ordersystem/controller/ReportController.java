@@ -3,7 +3,6 @@ package com.trainning.ordersystem.controller;
 import com.trainning.ordersystem.dto.common.ApiResponse;
 import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
-import com.trainning.ordersystem.security.CustomerContext;
 import com.trainning.ordersystem.service.OrderService;
 import com.trainning.ordersystem.service.ReportService;
 import lombok.RequiredArgsConstructor;
@@ -27,18 +26,14 @@ public class ReportController {
 
     private final ReportService reportService;
     private final OrderService orderService;
-    private final CustomerContext customerContext;
 
     @GetMapping("/orders/{orderId}/bill")
     public ResponseEntity<byte[]> exportOrderBill(
-            @PathVariable Long orderId,
-            @RequestParam(required = false) Long customerId) throws Exception {
+            @PathVariable Long orderId
+           ) throws Exception {
 
-        boolean adminOrStaff = customerContext.isAdminOrStaff();
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-
-        log.info("Yêu cầu xuất hóa đơn PDF cho đơn hàng ID={}, customerId={}, isAdminOrStaff={}",
-                orderId, effectiveCustomerId, adminOrStaff);
+        log.info("Yêu cầu xuất hóa đơn PDF cho đơn hàng ID={}",
+                orderId);
         OrderDetailResponse order = orderService.getOrderById(orderId);
         byte[] pdfBytes = reportService.generateBill(order);
 
@@ -56,14 +51,10 @@ public class ReportController {
 
     @GetMapping("/orders/code/{orderCode}/bill")
     public ResponseEntity<byte[]> exportOrderBillByCode(
-            @PathVariable String orderCode,
-            @RequestParam(required = false) Long customerId) throws Exception {
+            @PathVariable String orderCode) throws Exception {
 
-        boolean adminOrStaff = customerContext.isAdminOrStaff();
-        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
-
-        log.info("Yêu cầu xuất hóa đơn PDF cho đơn hàng mã={}, customerId={}, isAdminOrStaff={}",
-                orderCode, effectiveCustomerId, adminOrStaff);
+        log.info("Yêu cầu xuất hóa đơn PDF cho đơn hàng mã={}",
+                orderCode);
         OrderDetailResponse order = orderService.getOrderByCode(orderCode);
         byte[] pdfBytes = reportService.generateBill(order);
 

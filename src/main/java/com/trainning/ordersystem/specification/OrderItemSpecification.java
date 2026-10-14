@@ -24,11 +24,4 @@ public class OrderItemSpecification {
         }
     }
 
-    public OrderItem getOrderItemById(Long orderItemId) {
-        return orderItemRepository.findById(orderItemId)
-                .orElseThrow(() -> new AppException(
-                        ErrorCode.VALIDATION_ERROR,
-                        "Không tìm thấy chi tiết sản phẩm đơn hàng với id = " + orderItemId
-                ));
-    }
 }

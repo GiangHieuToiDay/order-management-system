@@ -41,7 +41,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -175,7 +174,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderDetailResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request) {
         log.info("Cập nhật trạng thái đơn hàng orderId={} thành {}", orderId, request.getStatus());
-        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
+//        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
 
         Order order = orderSpecification.getOrderById(orderId);
         OrderStatus oldStatus = order.getStatus();
@@ -311,6 +310,8 @@ public class OrderServiceImpl implements OrderService {
             }
 
         }
+        log.info("ListCartItem: {}",request.getCartItemIds());
+        log.info("List OrderItem: {}", request.getItems());
 
         return productIds;
     }

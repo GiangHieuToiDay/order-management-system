@@ -4,6 +4,6 @@ import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
 
 public interface OrderNotificationService {
 
-    public void sendOrderCreatedEmail(OrderCreatedEvent event);
+     void sendOrderCreatedEmail(OrderCreatedEvent event);
 
 }

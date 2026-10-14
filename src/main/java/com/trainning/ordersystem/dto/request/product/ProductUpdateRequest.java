@@ -34,10 +34,6 @@ public class ProductUpdateRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Giá sản phẩm phải lớn hơn 0")
     private BigDecimal price;
 
-    @NotNull(message = "Số lượng tồn kho không được để trống")
-    @Min(value = 0, message = "Số lượng tồn kho không được âm")
-    private Integer stockQuantity;
-
     private String description;
 
     @Size(max = 50, message = "Đơn vị tính tối đa 50 ký tự")

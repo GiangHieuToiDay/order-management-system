@@ -187,10 +187,6 @@ public class ProductServiceImpl implements ProductService {
         productMapper.updateEntityFromRequest(request, product);
         Product updatedProduct = productRepository.save(product);
 
-        if (request.getStockQuantity() != null) {
-            redisService.setStock(id, updatedProduct.getStockQuantity());
-        }
-
         redisService.clearCachePattern("product:list:*");
         return productMapper.toDetailResponse(updatedProduct);
     }
@@ -239,40 +235,43 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductDetailResponse updateQuantityProduct(Long id, int quantity) {
         log.info("Cập nhật số lượng sản phẩm: id={}, quantity={}", id, quantity);
-        productSpecification.checkProductActive(id);
+
+        if (quantity == 0) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR);
+        }
 
         Product product = productSpecification.getProductById(id);
 
-        int newStock = product.getStockQuantity() + quantity;
-        if (newStock < 0) {
+        int updated;
+        if (quantity > 0) {
+            updated = productRepository.addStock(id, quantity);
+        } else {
+            int decreaseAmount = - quantity;
+            updated = productRepository.deductStock(id, decreaseAmount );
+        }
+
+        if (updated == 0) {
             throw new AppException(
                     ErrorCode.INSUFFICIENT_STOCK,
-                    "Số lượng tồn kho không đủ để giảm. Hiện tại chỉ còn: " + product.getStockQuantity()
+                    "Sản phẩm không tồn tại hoặc tồn kho không đủ để điều chỉnh."
             );
         }
-        product.setStockQuantity(newStock);
+        int newStock = productRepository.getStockQuantity(id);
 
-        Product savedProduct = productRepository.save(product);
+        redisService.setStock(id, newStock);
 
-        redisService.setStock(id, savedProduct.getStockQuantity());
+        InventoryTransaction transaction = new InventoryTransaction();
+        transaction.setProduct(product);
+        transaction.setType(quantity > 0 ? TransactionType.IN : TransactionType.OUT);
+        transaction.setQuantity(Math.abs(quantity));
+        transaction.setReason("Admin điều chỉnh tồn kho thủ công (" + (quantity > 0 ? "+" : "") + quantity + ")");
+        transaction.setCreatedBy(SecurityUtils.getCurrentUser());
+        inventoryTransactionRepository.save(transaction);
 
-        if (quantity != 0) {
-            try {
-                InventoryTransaction transaction = new InventoryTransaction();
-                transaction.setProduct(savedProduct);
-                transaction.setType(quantity > 0 ? TransactionType.IN : TransactionType.OUT);
-                transaction.setQuantity(Math.abs(quantity));
-                transaction.setReason("Admin điều chỉnh tồn kho thủ công (" + (quantity > 0 ? "+" : "") + quantity + ")");
-                transaction.setCreatedBy(SecurityUtils.getCurrentUser());
-                inventoryTransactionRepository.save(transaction);
-            } catch (Exception e) {
-                log.warn("Không thể lưu inventory transaction: {}", e.getMessage());
-            }
-        }
+        ProductDetailResponse response = productMapper.toDetailResponse(product);
+        response.setStockQuantity(newStock);
 
-        ProductDetailResponse res = productMapper.toDetailResponse(savedProduct);
-        res.setStockQuantity(savedProduct.getStockQuantity());
-        return res;
+        return response;
     }
 
     private Pageable buildPageable(ProductFilterRequest request) {

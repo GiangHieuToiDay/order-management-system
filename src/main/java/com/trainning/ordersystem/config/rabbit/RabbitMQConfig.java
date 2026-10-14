@@ -21,11 +21,6 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue queue() {
-        return QueueBuilder.durable(QUEUE).build();
-    }
-
-    @Bean
     public Binding binding(Queue queue, DirectExchange exchange) {
         return BindingBuilder
                 .bind(queue)
@@ -47,4 +42,36 @@ public class RabbitMQConfig {
         template.setMessageConverter(jsonConverter);
         return template;
     }
+
+    // 1. Thêm hằng số DLX & DLQ
+    public static final String DLX_EXCHANGE = "order.dlx";
+    public static final String DLQ_QUEUE = "order.created.dlq";
+    public static final String DLQ_ROUTING_KEY = "order.created.dlq";
+
+    // 2. Gắn DLX vào Queue chính
+    @Bean
+    public Queue queue() {
+        return QueueBuilder.durable(QUEUE)
+                .deadLetterExchange(DLX_EXCHANGE)
+                .deadLetterRoutingKey(DLQ_ROUTING_KEY)
+                .build();
+    }
+
+    // 3. Khai báo Exchange và Queue cho DLQ
+    @Bean
+    public DirectExchange deadLetterExchange() {
+        return new DirectExchange(DLX_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue deadLetterQueue() {
+        return QueueBuilder.durable(DLQ_QUEUE).build();
+    }
+
+    @Bean
+    public Binding deadLetterBinding(Queue deadLetterQueue, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(DLQ_ROUTING_KEY);
+    }
+
+
 }

@@ -176,8 +176,8 @@ public class RedisServiceImpl implements RedisService {
             if (isLocked) {
                 try {
                     multiLock.unlock();
-                } catch (IllegalMonitorStateException e) {
-                    log.warn("Lock đã mất hiệu lực trước khi unlock", e);
+                } catch (Exception e) {
+                    log.warn("Không unlock được (lock có thể đã hết hạn hoặc đã giải phóng)", e);
                 }
             }
         }

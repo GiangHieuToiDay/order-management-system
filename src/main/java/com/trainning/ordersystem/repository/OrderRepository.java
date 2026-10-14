@@ -35,9 +35,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 """)
     Optional<OrderDetailResponse> findDetailResponseByCode(@Param("orderCode") String orderCode);
 
-
-
-
     @Query(
             value = """
             SELECT new com.trainning.ordersystem.dto.response.order.OrderSummaryResponse(
@@ -122,16 +119,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("""
         SELECT new com.trainning.ordersystem.dto.response.report.PeriodOrderDetailResponse(
-            o.id,
-            o.orderCode,
-            c.id,
-            u.fullName,
-            u.phone,
-            u.email,
-            o.totalAmount,
-            o.status,
-            o.paymentMethod,
-            o.createdAt
+            o.id,o.orderCode,c.id,u.fullName,u.phone,u.email,o.totalAmount,o.status,o.paymentMethod,o.createdAt
         )
         FROM Order o
         LEFT JOIN o.customer c

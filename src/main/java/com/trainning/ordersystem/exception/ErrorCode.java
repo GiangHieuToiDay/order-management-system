@@ -12,6 +12,7 @@ public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION(9999, "Lỗi hệ thống không xác định", HttpStatus.INTERNAL_SERVER_ERROR),
     VALIDATION_ERROR(9001, "Dữ liệu yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
 
+
     // ===================================================================
     // 2. NGƯỜI DÙNG & XÁC THỰC (1xxx)
     // ===================================================================

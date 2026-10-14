@@ -88,4 +88,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("UPDATE Product p SET p.stockQuantity = p.stockQuantity + :quantity " +
            "WHERE p.id = :productId")
     int addStock(@Param("productId") Long productId, @Param("quantity") int quantity);
+
+    @Query("SELECT p.stockQuantity FROM Product p WHERE p.id = :id")
+    int getStockQuantity(@Param("id") Long id);
 }

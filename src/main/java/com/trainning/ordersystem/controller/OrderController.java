@@ -8,9 +8,7 @@ import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
 import com.trainning.ordersystem.dto.response.order.OrderItemResponse;
 import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
-import com.trainning.ordersystem.entity.User;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
-import com.trainning.ordersystem.security.CustomerContext;
 import com.trainning.ordersystem.service.OrderItemService;
 import com.trainning.ordersystem.service.OrderService;
 import jakarta.validation.Valid;
@@ -31,7 +29,6 @@ public class OrderController {
 
     private final OrderService orderService;
     private final OrderItemService orderItemService;
-    private final CustomerContext customerContext;
 
 
     @PreAuthorize("hasAnyRole('CUSTOMER')")
@@ -47,7 +44,6 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderById(
             @PathVariable Long id
             ) {
-//        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
         OrderDetailResponse response = orderService.getOrderById(id);
         return ResponseEntity.ok(ApiResponse.ok("Lấy chi tiết đơn hàng thành công", response));
     }
@@ -56,7 +52,6 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderDetailResponse>> getOrderByCode(
             @PathVariable String orderCode
             ) {
-//        Long effectiveCustomerId = customerContext.resolveCustomerId(customerId);
         OrderDetailResponse response = orderService.getOrderByCode(orderCode);
         return ResponseEntity.ok(ApiResponse.ok("Lấy thông tin đơn hàng thành công", response));
     }

@@ -9,7 +9,8 @@ spring:
     password: ${RABBITMQ_PASSWORD:guest}
     listener:
       simple:
-        acknowledge-mode: manual
+        acknowledge-mode: auto
+        default-requeue-rejected: false
         prefetch: 10
         retry:
           enabled: true

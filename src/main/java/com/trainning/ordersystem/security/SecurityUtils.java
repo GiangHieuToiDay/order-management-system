@@ -60,12 +60,6 @@ public final class SecurityUtils {
         return getCurrentUserDetails() != null;
     }
 
-    public static boolean isAdminOrStaff() {
-        CustomUserDetails userDetails = getCurrentUserDetails();
-        if (userDetails == null) return false;
-        return userDetails.hasRole("ADMIN") || userDetails.hasRole("STAFF");
-    }
-
     public static boolean hasRole(String role) {
         CustomUserDetails userDetails = getCurrentUserDetails();
         if (userDetails == null) return false;
