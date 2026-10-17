@@ -26,6 +26,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AppException.class)
     public ResponseEntity<ApiResponse<Void>> handleAppException(AppException ex) {
         ErrorCode errorCode = ex.getErrorCode();
+        log.warn("[APP_EXCEPTION] Code: {} | Message: {}", errorCode.getCode(), ex.getMessage());
         ApiResponse<Void> response = ApiResponse.error(errorCode.getCode(), ex.getMessage());
         return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
@@ -41,6 +42,7 @@ public class GlobalExceptionHandler {
         }
 
         String summaryMessage = errors.values().stream().collect(Collectors.joining("; "));
+        log.warn("[VALIDATION_ERROR] {}", summaryMessage);
 
         ApiResponse<Map<String, String>> response = ApiResponse.<Map<String, String>>builder()
                 .success(false)
@@ -57,6 +59,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(ConstraintViolationException ex) {
+        log.warn("[CONSTRAINT_VIOLATION] {}", ex.getMessage());
         ApiResponse<Void> response = ApiResponse.error(ErrorCode.VALIDATION_ERROR.getCode(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -72,6 +75,7 @@ public class GlobalExceptionHandler {
         if (requiredType != null && requiredType.isEnum()) {
             message += String.format(". Các giá trị hợp lệ: %s", java.util.Arrays.toString(requiredType.getEnumConstants()));
         }
+        log.warn("[TYPE_MISMATCH] {}", message);
         ApiResponse<Void> response = ApiResponse.error(ErrorCode.VALIDATION_ERROR.getCode(), message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -82,6 +86,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(
             org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        log.warn("[MALFORMED_JSON] {}", ex.getMessage());
         ApiResponse<Void> response = ApiResponse.error(
                 ErrorCode.VALIDATION_ERROR.getCode(),
                 "Dữ liệu gửi lên không đúng định dạng JSON hoặc giá trị trường dữ liệu không hợp lệ"
@@ -94,6 +99,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+        log.warn("[ACCESS_DENIED] {}", ex.getMessage());
         ApiResponse<Void> response = ApiResponse.error(
                 ErrorCode.ACCESS_DENIED.getCode(),
                 ErrorCode.ACCESS_DENIED.getMessage()
@@ -106,6 +112,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+        log.warn("[AUTH_FAILED] {}", ex.getMessage());
         ApiResponse<Void> response = ApiResponse.error(
                 ErrorCode.INVALID_CREDENTIALS.getCode(),
                 ex.getMessage()
@@ -118,7 +125,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneralException(Exception ex) {
-        log.error("Internal Server Error: ", ex);
+        log.error("[SYSTEM_ERROR] Internal Server Error: ", ex);
         String detail = ex.getClass().getSimpleName() + ": " + ex.getMessage();
         if (ex.getCause() != null) {
             detail += " | Cause: " + ex.getCause().getClass().getSimpleName() + ": " + ex.getCause().getMessage();

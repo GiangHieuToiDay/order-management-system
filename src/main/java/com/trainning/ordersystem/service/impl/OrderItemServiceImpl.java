@@ -69,9 +69,11 @@ public class OrderItemServiceImpl implements OrderItemService {
         CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
         Long customerId = userDetails.getCustomerId();
 
-        log.info("Khởi tạo danh sách OrderItem từ giỏ hàng cho customerId={}, cartItemIds={}", customerId, cartItemIds);
+        if (cartItemIds == null || cartItemIds.isEmpty()) {
+            throw new AppException(ErrorCode.EMPTY_ORDER_ITEMS, "Vui lòng chọn ít nhất 1 sản phẩm từ giỏ hàng");
+        }
 
-        List<CartItem> cartItems = cartItemRepository.findByCustomerIdAndOptionalIds(customerId, cartItemIds);
+        List<CartItem> cartItems = cartItemRepository.findByIdInAndCustomerId(cartItemIds, customerId);
         orderItemSpecification.validateItemsNotEmpty(cartItems);
 
         List<OrderItem> orderItems = new ArrayList<>();
@@ -111,7 +113,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     @Override
     @Transactional
     public void deductStock(String orderCode, List<OrderItem> items) {
-        log.info("Trừ tồn kho từ sự kiện OrderCreatedEvent cho đơn hàng orderCode={}", orderCode);
+        log.info("[INVENTORY][DEDUCT] Trừ tồn kho cho đơn hàng | orderCode={}, itemsCount={}", orderCode, items != null ? items.size() : 0);
         if (items == null || items.isEmpty()) {
             return;
         }
@@ -146,7 +148,7 @@ public class OrderItemServiceImpl implements OrderItemService {
     public void restoreStockForOrderItems(List<OrderItem> items, String orderCode) {
         CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
         User actor = userDetails.getUser();
-        log.info("Hoàn trả tồn kho và ghi nhật ký nhập lại cho đơn hàng hủy orderCode={}", orderCode);
+        log.info("[INVENTORY][RESTORE] Hoàn trả tồn kho cho đơn hàng hủy | orderCode={}, itemsCount={}", orderCode, items != null ? items.size() : 0);
         orderItemSpecification.validateItemsNotEmpty(items);
 
         for (OrderItem item : items) {

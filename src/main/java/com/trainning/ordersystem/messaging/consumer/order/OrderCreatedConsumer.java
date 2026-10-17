@@ -5,6 +5,7 @@ import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
 import com.trainning.ordersystem.service.OrderNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -18,20 +19,25 @@ public class OrderCreatedConsumer {
 
     @RabbitListener(queues = RabbitMQConfig.QUEUE)
     public void consumeOrder(OrderCreatedEvent event) {
-        log.info("Nhận OrderCreatedEvent: orderId={}", event.getOrderId());
+        String traceId = event.getOrderCode() != null ? "mq-" + event.getOrderCode() : "mq-" + event.getOrderId();
+        MDC.put("traceId", traceId);
 
         try {
+            log.info("[RABBITMQ][CONSUME] Bắt đầu xử lý OrderCreatedEvent | orderId={}, orderCode={}", event.getOrderId(), event.getOrderCode());
+
             // 1. Gửi email thông báo (thành công Spring sẽ tự động ACK)
             notificationService.sendOrderCreatedEmail(event);
-            log.info("OrderCreatedEvent xử lý thành công: orderId={}", event.getOrderId());
+            log.info("[RABBITMQ][SUCCESS] Xử lý OrderCreatedEvent thành công | orderId={}", event.getOrderId());
 
         } catch (IllegalArgumentException ex) {
-            log.error("Lỗi nghiệp vụ không thể thử lại: orderId={}, message={}", event.getOrderId(), ex.getMessage());
+            log.error("[RABBITMQ][REJECT_BUSINESS_ERROR] Lỗi nghiệp vụ không thể thử lại | orderId={}, message={}", event.getOrderId(), ex.getMessage());
             throw new AmqpRejectAndDontRequeueException(ex);
 
         } catch (Exception ex) {
-            log.error("Lỗi xử lý đơn hàng: orderId={}, message={}", event.getOrderId(), ex.getMessage(), ex);
+            log.error("[RABBITMQ][RETRY_TRANSIENT_ERROR] Lỗi xử lý đơn hàng, chuẩn bị retry | orderId={}, message={}", event.getOrderId(), ex.getMessage(), ex);
             throw new RuntimeException(ex);
+        } finally {
+            MDC.remove("traceId");
         }
     }
 }

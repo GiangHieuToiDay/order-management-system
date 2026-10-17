@@ -76,7 +76,7 @@ public class RedisServiceImpl implements RedisService {
             if (val == null) return null;
             return Integer.parseInt(val.replace("\"", "").trim());
         } catch (Exception e) {
-            log.warn("Lỗi khi đọc tồn kho từ Redis cho productId={}: {}", productId, e.getMessage());
+            log.warn("[REDIS][GET_STOCK_WARN] Lỗi khi đọc tồn kho từ Redis | productId={}: {}", productId, e.getMessage());
             return null;
         }
     }
@@ -87,7 +87,7 @@ public class RedisServiceImpl implements RedisService {
         try {
             stringRedisTemplate.opsForValue().set(STOCK_KEY_PREFIX + productId, quantity.toString(), 7, TimeUnit.DAYS);
         } catch (Exception e) {
-            log.error("Lỗi khi set tồn kho trên Redis cho productId={}: {}", productId, e.getMessage());
+            log.error("[REDIS][SET_STOCK_ERROR] Lỗi khi set tồn kho trên Redis | productId={}", productId, e);
         }
     }
 
@@ -113,7 +113,7 @@ public class RedisServiceImpl implements RedisService {
                 }
             }
         } catch (Exception e) {
-            log.error("Lỗi khi multiGet tồn kho từ Redis: {}", e.getMessage());
+            log.error("[REDIS][MULTI_GET_ERROR] Lỗi khi multiGet tồn kho từ Redis", e);
         }
         return result;
     }
@@ -124,7 +124,7 @@ public class RedisServiceImpl implements RedisService {
         try {
             return stringRedisTemplate.opsForValue().decrement(STOCK_KEY_PREFIX + productId, quantity);
         } catch (Exception e) {
-            log.error("Lỗi khi trừ tồn kho trên Redis cho productId={}: {}", productId, e.getMessage());
+            log.error("[REDIS][DEDUCT_ERROR] Lỗi khi trừ tồn kho trên Redis | productId={}", productId, e);
             return null;
         }
     }
@@ -135,7 +135,7 @@ public class RedisServiceImpl implements RedisService {
         try {
             return stringRedisTemplate.opsForValue().increment(STOCK_KEY_PREFIX + productId, quantity);
         } catch (Exception e) {
-            log.error("Lỗi khi cộng tồn kho trên Redis cho productId={}: {}", productId, e.getMessage());
+            log.error("[REDIS][ADD_ERROR] Lỗi khi cộng tồn kho trên Redis | productId={}", productId, e);
             return null;
         }
     }
@@ -177,7 +177,7 @@ public class RedisServiceImpl implements RedisService {
                 try {
                     multiLock.unlock();
                 } catch (Exception e) {
-                    log.warn("Không unlock được (lock có thể đã hết hạn hoặc đã giải phóng)", e);
+                    log.warn("[REDIS][UNLOCK_WARN] Không unlock được (lock có thể đã hết hạn hoặc đã giải phóng)", e);
                 }
             }
         }

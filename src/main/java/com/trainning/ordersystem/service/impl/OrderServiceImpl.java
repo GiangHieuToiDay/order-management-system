@@ -62,7 +62,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderDetailResponse placeOrder( CreateOrderRequest request) {
         CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
         Long customerId = userDetails.getCustomerId();
-        log.info("Khách hàng customerId={} tiến hành đặt hàng", customerId);
+        log.info("[ORDER][CREATE] Khách hàng bắt đầu đặt hàng | customerId={}", customerId);
 
 
         List<Long> productIds = extractProductIds(customerId, request);
@@ -103,14 +103,14 @@ public class OrderServiceImpl implements OrderService {
                 cartService.clearCart();
             }
         }
-        log.info("Đặt hàng thành công với mã đơn: {}", savedOrder.getOrderCode());
+        log.info("[ORDER][CREATE_SUCCESS] Đặt hàng thành công | orderCode={}", savedOrder.getOrderCode());
         return OrderDetailResponse.from(savedOrder);
     }
 
     @Override
     @Transactional(readOnly = true)
     public OrderDetailResponse getOrderById(Long orderId) {
-        log.info("Xem chi tiết đơn hàng orderId={}", orderId);
+        log.info("[ORDER][GET_BY_ID] Xem chi tiết đơn hàng | orderId={}", orderId);
         Order order = orderSpecification.getOrderById(orderId);
 
         orderSpecification.validateOrderOwnership(order);
@@ -121,7 +121,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderDetailResponse getOrderByCode(String orderCode) {
-        log.info("Xem chi tiết đơn hàng theo orderCode={}", orderCode);
+        log.info("[ORDER][GET_BY_CODE] Xem chi tiết đơn hàng | orderCode={}", orderCode);
         Order order = orderSpecification.getOrderByCode(orderCode);
 
         orderSpecification.validateOrderOwnership(order);
@@ -133,7 +133,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public PageResponse<OrderSummaryResponse> getMyOrders(int page, int size) {
         CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
-        log.info("Lấy lịch sử đơn hàng của customerId={}, page={}, size={}", userDetails.getUser(), page, size);
+        log.info("[ORDER][GET_MY_ORDERS] Lấy lịch sử đơn hàng | customerId={}, page={}, size={}", userDetails.getCustomerId(), page, size);
         customerSpecification.findCustomerById(userDetails.getCustomerId());
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<OrderSummaryResponse> orderPage = orderRepository.findByCustomerId(userDetails.getCustomerId(), pageable);
@@ -143,7 +143,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<OrderSummaryResponse> getAllOrders(String keyword, OrderStatus status, int page, int size) {
-        log.info("Tìm kiếm đơn hàng: keyword={}, status={}, page={}, size={}", keyword, status, page, size);
+        log.info("[ORDER][SEARCH] Tìm kiếm đơn hàng | keyword={}, status={}, page={}, size={}", keyword, status, page, size);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Page<OrderSummaryResponse> orderPage = orderRepository.searchOrders(keyword, status, pageable);
@@ -155,7 +155,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderDetailResponse cancelMyOrder(Long orderId, String reason) {
         CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
-        log.info("Khách hàng customerId={} yêu cầu hủy đơn hàng orderId={}", userDetails.getUserId(), orderId);
+        log.info("[ORDER][CANCEL] Khách hàng yêu cầu hủy đơn hàng | customerId={}, orderId={}", userDetails.getCustomerId(), orderId);
 
         Order order = orderSpecification.getOrderById(orderId);
         orderSpecification.validateOrderOwnership(order);
@@ -166,19 +166,18 @@ public class OrderServiceImpl implements OrderService {
 
         orderItemService.restoreStockForOrderItems(order.getOrderItems(), order.getOrderCode());
 
-        log.info("Hủy đơn hàng {} thành công. Lý do: {}", savedOrder.getOrderCode(), reason);
+        log.info("[ORDER][CANCEL_SUCCESS] Hủy đơn hàng thành công | orderCode={}, reason={}", savedOrder.getOrderCode(), reason);
         return OrderDetailResponse.from(savedOrder);
     }
 
     @Override
     @Transactional
     public OrderDetailResponse updateOrderStatus(Long orderId, OrderStatusUpdateRequest request) {
-        log.info("Cập nhật trạng thái đơn hàng orderId={} thành {}", orderId, request.getStatus());
-//        CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
-
         Order order = orderSpecification.getOrderById(orderId);
         OrderStatus oldStatus = order.getStatus();
         OrderStatus newStatus = request.getStatus();
+
+        log.info("[ORDER][UPDATE_STATUS] Cập nhật trạng thái đơn hàng | orderId={}, oldStatus={}, newStatus={}", orderId, oldStatus, newStatus);
 
         orderSpecification.validateStatusTransition(oldStatus, newStatus);
 
@@ -276,8 +275,11 @@ public class OrderServiceImpl implements OrderService {
         List<Long> productIds = new ArrayList<>();
         if (request.isFromCart()) {
             // Trường hợp đặt hàng từ giỏ hàng
-            log.info("-------------------------------------Mua Hàng Từ Cart---------------------------------------");
-            List<CartItem> cartItems = cartItemRepository.findByCustomerIdAndOptionalIds( customerId, request.getCartItemIds());
+            log.debug("[ORDER][EXTRACT_IDS] Trích xuất sản phẩm từ giỏ hàng | cartItemIds={}", request.getCartItemIds());
+            if (request.getCartItemIds() == null || request.getCartItemIds().isEmpty()) {
+                return productIds;
+            }
+            List<CartItem> cartItems = cartItemRepository.findByIdInAndCustomerId(request.getCartItemIds(), customerId);
 
             if (cartItems == null) {
                 return productIds;
@@ -295,7 +297,7 @@ public class OrderServiceImpl implements OrderService {
 
         } else {
             // Trường hợp mua hàng trực tiếp
-            log.info("-------------------------------------Mua Hàng Trực Tiếp---------------------------------------");
+            log.debug("[ORDER][EXTRACT_IDS] Trích xuất sản phẩm mua trực tiếp | itemsCount={}", request.getItems() != null ? request.getItems().size() : 0);
             List<OrderItemRequest> items = request.getItems();
 
             if (items == null) {
@@ -310,8 +312,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
         }
-        log.info("ListCartItem: {}",request.getCartItemIds());
-        log.info("List OrderItem: {}", request.getItems());
+        log.debug("[ORDER][EXTRACT_IDS] Danh sách productId cần khóa: {}", productIds);
 
         return productIds;
     }

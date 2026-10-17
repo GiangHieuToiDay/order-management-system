@@ -33,11 +33,4 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     List<CartItem> findByIdInAndCustomerId(Collection<Long> ids, Long customerId);
     Optional<CartItem> findByCustomerIdAndProductId(Long customerId, Long productId);
     void deleteByCustomerId(Long customerId);
-
-    default List<CartItem> findByCustomerIdAndOptionalIds(Long customerId, Collection<Long> ids) {
-        if (ids != null && !ids.isEmpty()) {
-            return findByIdInAndCustomerId(ids, customerId);
-        }
-        return findByCustomerId(customerId);
-    }
 }

@@ -56,7 +56,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductDetailResponse createProduct(ProductCreateRequest request) {
-        log.info("Tạo sản phẩm mới: sku={}, name={}", request.getSku(), request.getName());
+        log.info("[PRODUCT][CREATE] Tạo sản phẩm mới | sku={}, name={}", request.getSku(), request.getName());
 
         productSpecification.validateSkuNotExists(request.getSku());
         Category category = categorySpecification.getCategoryById(request.getCategoryId());
@@ -174,7 +174,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductDetailResponse updateProduct(Long id, ProductUpdateRequest request) {
-        log.info("Cập nhật thông tin sản phẩm: id={}", id);
+        log.info("[PRODUCT][UPDATE] Cập nhật thông tin sản phẩm | id={}", id);
 
         Product product = productSpecification.getProductById(id);
         productSpecification.validateSkuNotExistsForUpdate(id, request.getSku());
@@ -195,7 +195,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductDetailResponse updateProductStatus(Long id, ProductStatus status) {
-        log.info("Cập nhật trạng thái sản phẩm: id={}, status={}", id, status);
+        log.info("[PRODUCT][UPDATE_STATUS] Cập nhật trạng thái sản phẩm | id={}, status={}", id, status);
 
         productSpecification.validateStatus(status);
         Product product = productSpecification.getProductById(id);
@@ -208,7 +208,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductDetailResponse assignCategory(Long productId, Long categoryId) {
-        log.info("Gán danh mục cho sản phẩm: productId={}, categoryId={}", productId, categoryId);
+        log.info("[PRODUCT][ASSIGN_CATEGORY] Gán danh mục cho sản phẩm | productId={}, categoryId={}", productId, categoryId);
 
         Product product = productSpecification.getProductById(productId);
         Category category = categorySpecification.getCategoryById(categoryId);
@@ -234,7 +234,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductDetailResponse updateQuantityProduct(Long id, int quantity) {
-        log.info("Cập nhật số lượng sản phẩm: id={}, quantity={}", id, quantity);
+        log.info("[PRODUCT][UPDATE_QUANTITY] Cập nhật số lượng tồn kho sản phẩm | id={}, quantity={}", id, quantity);
 
         if (quantity == 0) {
             throw new AppException(ErrorCode.VALIDATION_ERROR);
