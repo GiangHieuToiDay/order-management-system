@@ -2,8 +2,8 @@ package com.trainning.ordersystem.service.impl;
 
 import com.trainning.ordersystem.dto.common.PageResponse;
 import com.trainning.ordersystem.dto.response.inventory.InventoryTransactionResponse;
-import com.trainning.ordersystem.entity.InventoryTransaction;
 import com.trainning.ordersystem.repository.InventoryTransactionRepository;
+import com.trainning.ordersystem.repository.InventoryTransactionRepositoryCustom;
 import com.trainning.ordersystem.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,13 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final InventoryTransactionRepositoryCustom inventoryTransactionRepositoryCustom;
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<InventoryTransactionResponse> getAllTransactions(int page, int size) {
         log.info("Lấy danh sách tất cả giao dịch kho: page={}, size={}", page, size);
         Pageable pageable = PageRequest.of(page, size);
-        Page<InventoryTransactionResponse> transactionPage = inventoryTransactionRepository.findAllTransactionResponses(pageable);
+        Page<InventoryTransactionResponse> transactionPage = inventoryTransactionRepositoryCustom.findAllTransactionResponses(pageable);
         return buildPageResponse(transactionPage);
     }
 
@@ -34,7 +35,7 @@ public class InventoryServiceImpl implements InventoryService {
     public PageResponse<InventoryTransactionResponse> getTransactionsByProduct(Long productId, int page, int size) {
         log.info("Lấy lịch sử giao dịch kho theo sản phẩm: productId={}, page={}, size={}", productId, page, size);
         Pageable pageable = PageRequest.of(page, size);
-        Page<InventoryTransactionResponse> transactionPage = inventoryTransactionRepository.findTransactionResponsesByProductId(productId, pageable);
+        Page<InventoryTransactionResponse> transactionPage = inventoryTransactionRepositoryCustom.findTransactionResponsesByProductId(productId, pageable);
         return buildPageResponse(transactionPage);
     }
 

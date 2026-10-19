@@ -18,6 +18,7 @@ import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.mapper.UserMapper;
 import com.trainning.ordersystem.repository.CustomerRepository;
 import com.trainning.ordersystem.repository.UserRepository;
+import com.trainning.ordersystem.repository.UserRepositoryCustom;
 import com.trainning.ordersystem.security.jwt.JwtTokenProvider;
 import com.trainning.ordersystem.security.jwt.RefreshTokenService;
 import com.trainning.ordersystem.security.jwt.TokenBlacklistService;
@@ -56,6 +57,7 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final UserRepositoryCustom userRepositoryCustom;
     private final CustomerRepository customerRepository;
     private final UserSpecification userSpecification;
     private final RoleSpecification roleSpecification;
@@ -201,7 +203,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserProfileResponse getMyProfile() {
         User currentUser = getCurrentUser();
-        return userRepository.findProfileById(currentUser.getId())
+        return userRepositoryCustom.findProfileById(currentUser.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Không tìm thấy thông tin người dùng"));
     }
 
@@ -263,7 +265,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getUserById(Long userId) {
-        return userRepository.findProfileById(userId)
+        return userRepositoryCustom.findProfileById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND, "Không tìm thấy người dùng với id = " + userId));
     }
 
@@ -271,7 +273,7 @@ public class UserServiceImpl implements UserService {
     public PageResponse<UserProfileResponse> getUsers(int page, int size, String keyword, Long roleId, UserStatus status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         String statusStr = status != null ? status.name() : null;
-        Page<UserProfileResponse> usersPage = userRepository.searchUsers(keyword, roleId, statusStr, pageable);
+        Page<UserProfileResponse> usersPage = userRepositoryCustom.searchUsers(keyword, roleId, statusStr, pageable);
 
         List<UserProfileResponse> responses = usersPage.getContent().stream().toList();
 
@@ -299,7 +301,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileResponse getCustomerById(Long customerId) {
-        return userRepository.findProfileByCustomerId(customerId)
+        return userRepositoryCustom.findProfileByCustomerId(customerId)
                 .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND, "Không tìm thấy khách hàng với id = " + customerId));
     }
 

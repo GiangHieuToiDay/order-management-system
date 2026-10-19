@@ -8,6 +8,7 @@ import com.trainning.ordersystem.entity.CartItem;
 import com.trainning.ordersystem.entity.Customer;
 import com.trainning.ordersystem.entity.Product;
 import com.trainning.ordersystem.repository.CartItemRepository;
+import com.trainning.ordersystem.repository.CartItemRepositoryCustom;
 import com.trainning.ordersystem.security.SecurityUtils;
 import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
 import com.trainning.ordersystem.service.CartService;
@@ -30,6 +31,7 @@ import java.util.Optional;
 public class CartServiceImpl implements CartService {
 
     private final CartItemRepository cartItemRepository;
+    private final CartItemRepositoryCustom cartItemRepositoryCustom;
     private final CartSpecification cartSpecification;
     private final CustomerSpecification customerSpecification;
     private final ProductSpecification productSpecification;
@@ -120,7 +122,7 @@ public class CartServiceImpl implements CartService {
     }
 
     private CartResponse buildCartResponse(Long customerId) {
-        List<CartItemResponse> itemResponses = cartItemRepository.findItemResponsesByCustomerId(customerId);
+        List<CartItemResponse> itemResponses = cartItemRepositoryCustom.findItemResponsesByCustomerId(customerId);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         if (itemResponses != null && !itemResponses.isEmpty()) {

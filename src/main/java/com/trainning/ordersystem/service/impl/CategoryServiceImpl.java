@@ -9,6 +9,7 @@ import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.mapper.CategoryMapper;
 import com.trainning.ordersystem.repository.CategoryRepository;
+import com.trainning.ordersystem.repository.CategoryRepositoryCustom;
 import com.trainning.ordersystem.service.CategoryService;
 import com.trainning.ordersystem.specification.CategorySpecification;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.List;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final CategoryRepositoryCustom categoryRepositoryCustom;
     private final CategorySpecification categorySpecification;
     private final CategoryMapper categoryMapper;
 
@@ -55,7 +57,7 @@ public class CategoryServiceImpl implements CategoryService {
     public PageResponse<CategoryResponse> getCategories(int page, int size, String keyword, CategoryStatus status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         String statusStr = status != null ? status.name() : null;
-        Page<CategoryResponse> categoryPage = categoryRepository.searchCategoryResponses(keyword, statusStr, pageable);
+        Page<CategoryResponse> categoryPage = categoryRepositoryCustom.searchCategoryResponses(keyword, statusStr, pageable);
 
         return PageResponse.<CategoryResponse>builder()
                 .content(categoryPage.getContent())
@@ -70,13 +72,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryResponse> getActiveCategories() {
-        return categoryRepository.findCategoryResponsesByStatus(CategoryStatus.ACTIVE.name());
+        return categoryRepositoryCustom.findCategoryResponsesByStatus(CategoryStatus.ACTIVE.name());
     }
 
 
     @Override
     public CategoryResponse getCategoryById(Long id) {
-        return categoryRepository.findCategoryResponseById(id)
+        return categoryRepositoryCustom.findCategoryResponseById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND, "Không tìm thấy danh mục với id = " + id));
     }
 

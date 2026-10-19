@@ -11,6 +11,7 @@ import com.trainning.ordersystem.entity.Product;
 import com.trainning.ordersystem.entity.enums.ProductStatus;
 import com.trainning.ordersystem.mapper.ProductMapper;
 import com.trainning.ordersystem.repository.ProductRepository;
+import com.trainning.ordersystem.repository.ProductRepositoryCustom;
 import com.trainning.ordersystem.service.ProductService;
 import com.trainning.ordersystem.service.RedisService;
 import com.trainning.ordersystem.specification.CategorySpecification;
@@ -51,6 +52,7 @@ public class ProductServiceImpl implements ProductService {
     private final ObjectMapper objectMapper;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final ProductMapper productMapper;
+    private final ProductRepositoryCustom productRepositoryCustom;
 
 
     @Override
@@ -100,7 +102,7 @@ public class ProductServiceImpl implements ProductService {
         if (response == null) {
 
             Page<ProductSummaryResponse> productPage =
-                    productRepository.searchProductSummaries(
+                    productRepositoryCustom.searchProductSummaries(
                             request.getKeyword(),
                             request.getCategoryId(),
                             request.getStatus() != null ? request.getStatus().name() : null,
@@ -155,7 +157,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductDetailResponse getProductById(Long id) {
-        ProductDetailResponse detail = productRepository.findDetailById(id)
+        ProductDetailResponse detail = productRepositoryCustom.findDetailById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm với id: " + id));
 
         Integer realtimeStock = redisService.getStock(id);

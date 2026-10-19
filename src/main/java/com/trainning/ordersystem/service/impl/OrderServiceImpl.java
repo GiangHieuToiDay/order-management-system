@@ -14,6 +14,7 @@ import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
 import com.trainning.ordersystem.messaging.event.order.OrderItemEvent;
 import com.trainning.ordersystem.repository.CartItemRepository;
 import com.trainning.ordersystem.repository.OrderRepository;
+import com.trainning.ordersystem.repository.OrderRepositoryCustom;
 import com.trainning.ordersystem.security.SecurityUtils;
 import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
 import com.trainning.ordersystem.service.CartService;
@@ -54,7 +55,7 @@ public class OrderServiceImpl implements OrderService {
     private final CartService cartService;
     private final RedisService redisService;
     private final ApplicationEventPublisher eventPublisher;
-    private final TransactionTemplate orderTransactionTemplate;
+    private final OrderRepositoryCustom orderRepositoryCustom;
 
     @Override
     @Transactional
@@ -135,7 +136,7 @@ public class OrderServiceImpl implements OrderService {
         log.info("[ORDER][GET_MY_ORDERS] Lấy lịch sử đơn hàng | customerId={}, page={}, size={}", userDetails.getCustomerId(), page, size);
         customerSpecification.findCustomerById(userDetails.getCustomerId());
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<OrderSummaryResponse> orderPage = orderRepository.findByCustomerId(userDetails.getCustomerId(), pageable);
+        Page<OrderSummaryResponse> orderPage = orderRepositoryCustom.findByCustomerId(userDetails.getCustomerId(), pageable);
         return toPageResponse(orderPage);
     }
 
@@ -146,7 +147,7 @@ public class OrderServiceImpl implements OrderService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         String statusStr = status != null ? status.name() : null;
-        Page<OrderSummaryResponse> orderPage = orderRepository.searchOrders(keyword, statusStr, pageable);
+        Page<OrderSummaryResponse> orderPage = orderRepositoryCustom.searchOrders(keyword, statusStr, pageable);
 
         return toPageResponse(orderPage);
     }
@@ -219,21 +220,17 @@ public class OrderServiceImpl implements OrderService {
 
         String normalizedGroupBy = "DAY".equalsIgnoreCase(groupBy) ? "DAY" : "MONTH";
 
-        List<OrderRevenueStatisticResponse> rawRows = orderRepository.getOrderRevenueStatistics(
-                startDateTime, endDateTime, normalizedGroupBy
-        );
+        List<OrderRevenueStatisticResponse> rawRows = orderRepositoryCustom.getOrderRevenueStatistics(
+                startDateTime, endDateTime, normalizedGroupBy);
 
-        // 1. Lọc ra các dòng Cha (Tổng của Kỳ: có customerId == null)
         List<OrderRevenueStatisticResponse> periodList = rawRows.stream()
                 .filter(row -> row.getCustomerId() == null)
                 .toList();
 
-        // 2. Gom nhóm các dòng Con (Chi tiết từng User: có customerId != null) theo period
         Map<String, List<OrderRevenueStatisticResponse>> customerDetailsByPeriod = rawRows.stream()
                 .filter(row -> row.getCustomerId() != null)
                 .collect(Collectors.groupingBy(OrderRevenueStatisticResponse::getPeriod)); // nhóm các đơn có cùng period li
 
-        // 3. Gắn danh sách User vào từng Kỳ tương ứng
         for (OrderRevenueStatisticResponse periodStat : periodList) {
             List<OrderRevenueStatisticResponse> details = customerDetailsByPeriod.getOrDefault(
                     periodStat.getPeriod(), Collections.emptyList()

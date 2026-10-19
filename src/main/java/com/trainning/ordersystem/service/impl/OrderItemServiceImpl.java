@@ -9,6 +9,7 @@ import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.repository.CartItemRepository;
 import com.trainning.ordersystem.repository.InventoryTransactionRepository;
 import com.trainning.ordersystem.repository.OrderItemRepository;
+import com.trainning.ordersystem.repository.OrderItemRepositoryCustom;
 import com.trainning.ordersystem.repository.ProductRepository;
 import com.trainning.ordersystem.security.SecurityUtils;
 import com.trainning.ordersystem.security.userDetails.CustomUserDetails;
@@ -35,6 +36,7 @@ import java.util.Optional;
 public class OrderItemServiceImpl implements OrderItemService {
 
     private final OrderItemRepository orderItemRepository;
+    private final OrderItemRepositoryCustom orderItemRepositoryCustom;
     private final OrderItemSpecification orderItemSpecification;
     private final ProductRepository productRepository;
     private final ProductSpecification productSpecification;
@@ -96,14 +98,14 @@ public class OrderItemServiceImpl implements OrderItemService {
     @Override
     public List<OrderItemResponse> getItemsByOrderId(Long orderId) {
         log.info("Lấy danh sách OrderItem theo orderId={}", orderId);
-        List<OrderItemResponse> items = orderItemRepository.findItemResponsesByOrderId(orderId);
+        List<OrderItemResponse> items = orderItemRepositoryCustom.findItemResponsesByOrderId(orderId);
         return items;
     }
 
     @Override
     public OrderItemResponse getItemById(Long itemId) {
         log.info("Lấy chi tiết OrderItem theo itemId={}", itemId);
-        return orderItemRepository.findItemResponseById(itemId)
+        return orderItemRepositoryCustom.findItemResponseById(itemId)
                 .orElseThrow(() -> new AppException(
                         ErrorCode.VALIDATION_ERROR,
                         "Không tìm thấy chi tiết sản phẩm đơn hàng với id = " + itemId

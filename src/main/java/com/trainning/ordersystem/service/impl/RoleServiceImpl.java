@@ -7,6 +7,7 @@ import com.trainning.ordersystem.exception.AppException;
 import com.trainning.ordersystem.exception.ErrorCode;
 import com.trainning.ordersystem.mapper.RoleMapper;
 import com.trainning.ordersystem.repository.RoleRepository;
+import com.trainning.ordersystem.repository.RoleRepositoryCustom;
 import com.trainning.ordersystem.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.util.List;
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
+    private final RoleRepositoryCustom roleRepositoryCustom;
     private final RoleMapper roleMapper;
 
     @Override
@@ -35,18 +37,18 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public List<RoleResponse> getAllRoles() {
-        return roleRepository.findAllRoleResponses();
+        return roleRepositoryCustom.findAllRoleResponses();
     }
 
     @Override
     public RoleResponse getRoleById(Long id) {
-        return roleRepository.findRoleResponseById(id)
+        return roleRepositoryCustom.findRoleResponseById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND, "Không tìm thấy vai trò với id = " + id));
     }
 
     @Override
     public RoleResponse getRoleByName(String name) {
-        return roleRepository.findRoleResponseByName(name)
+        return roleRepositoryCustom.findRoleResponseByName(name)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND, "Không tìm thấy vai trò '" + name + "'"));
     }
 }
