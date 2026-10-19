@@ -53,60 +53,6 @@ public class ProductRepositoryCustomImpl implements ProductRepositoryCustom {
     }
 
     @Override
-    public Optional<ProductDetailResponse> findDetailBySku(String sku) {
-        String sql = """
-            SELECT p.id AS id,
-                   p.name AS name,
-                   p.sku AS sku,
-                   p.price AS price,
-                   p.unit AS unit,
-                   p.stock_quantity AS stockQuantity,
-                   p.description AS description,
-                   p.image_url AS imageUrl,
-                   c.id AS categoryId,
-                   c.name AS categoryName,
-                   p.status AS status,
-                   p.created_at AS createdAt,
-                   p.updated_at AS updatedAt
-            FROM products p
-            LEFT JOIN categories c ON p.category_id = c.id
-            WHERE p.sku = :sku
-        """;
-
-        Query query = entityManager.createNativeQuery(sql, "ProductDetailMapping");
-        query.setParameter("sku", sku);
-
-        @SuppressWarnings("unchecked")
-        List<ProductDetailResponse> results = query.getResultList();
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
-
-    @Override
-    public Optional<ProductSummaryResponse> findSummaryById(Long id) {
-        String sql = """
-            SELECT p.id AS id,
-                   p.name AS name,
-                   p.sku AS sku,
-                   p.price AS price,
-                   p.unit AS unit,
-                   p.image_url AS imageUrl,
-                   c.id AS categoryId,
-                   c.name AS categoryName,
-                   p.status AS status
-            FROM products p
-            LEFT JOIN categories c ON p.category_id = c.id
-            WHERE p.id = :id
-        """;
-
-        Query query = entityManager.createNativeQuery(sql, "ProductSummaryMapping");
-        query.setParameter("id", id);
-
-        @SuppressWarnings("unchecked")
-        List<ProductSummaryResponse> results = query.getResultList();
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
-    }
-
-    @Override
     public Page<ProductSummaryResponse> searchProductSummaries(
             String keyword,
             Long categoryId,
