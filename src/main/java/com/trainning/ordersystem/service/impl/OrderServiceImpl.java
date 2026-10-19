@@ -247,48 +247,37 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private List<Long> extractProductIds(Long customerId, CreateOrderRequest request) {
-        List<Long> productIds = new ArrayList<>();
         if (request.isFromCart()) {
-            // Trường hợp đặt hàng từ giỏ hàng
-            log.debug("[ORDER][EXTRACT_IDS] Trích xuất sản phẩm từ giỏ hàng | cartItemIds={}", request.getCartItemIds());
+            log.debug("[ORDER][EXTRACT_IDS] Trích xuất sản phẩm từ giỏ hàng | cartItemIds={}",
+                    request.getCartItemIds());
+
             if (request.getCartItemIds() == null || request.getCartItemIds().isEmpty()) {
-                return productIds;
-            }
-            List<CartItem> cartItems = cartItemRepository.findByIdInAndCustomerId(request.getCartItemIds(), customerId);
-
-            if (cartItems == null) {
-                return productIds;
+                return Collections.emptyList();
             }
 
-            for (CartItem cartItem : cartItems) {
-                if (cartItem.getProduct() == null) {
-                    continue;
-                }
-                Long productId = cartItem.getProduct().getId();
-                if (productId != null) {
-                    productIds.add(productId);
-                }
-            }
+            List<Long> productIds = cartItemRepository
+                    .findByIdInAndCustomerId(request.getCartItemIds(), customerId)
+                    .stream()
+                    .filter(cartItem -> cartItem.getProduct() != null)
+                    .map(cartItem -> cartItem.getProduct().getId())
+                    .filter(Objects::nonNull)
+                    .toList();
 
-        } else {
-            // Trường hợp mua hàng trực tiếp
-            log.debug("[ORDER][EXTRACT_IDS] Trích xuất sản phẩm mua trực tiếp | itemsCount={}", request.getItems() != null ? request.getItems().size() : 0);
-            List<OrderItemRequest> items = request.getItems();
-
-            if (items == null) {
-                return productIds;
-            }
-
-            for (OrderItemRequest item : items) {
-                Long productId = item.getProductId();
-                if (productId != null) {
-                    productIds.add(productId);
-                }
-            }
-
+            log.debug("[ORDER][EXTRACT_IDS] Danh sách productId cần khóa: {}", productIds);
+            return productIds;
         }
-        log.debug("[ORDER][EXTRACT_IDS] Danh sách productId cần khóa: {}", productIds);
 
+        log.debug("[ORDER][EXTRACT_IDS] Trích xuất sản phẩm mua trực tiếp | itemsCount={}",
+                request.getItems() != null ? request.getItems().size() : 0);
+
+        List<Long> productIds = request.getItems() == null
+                ? Collections.emptyList()
+                : request.getItems().stream()
+                .map(OrderItemRequest::getProductId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        log.debug("[ORDER][EXTRACT_IDS] Danh sách productId cần khóa: {}", productIds);
         return productIds;
     }
 
