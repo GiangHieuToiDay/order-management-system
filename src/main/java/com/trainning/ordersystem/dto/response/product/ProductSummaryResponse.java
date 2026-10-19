@@ -39,5 +39,8 @@ public class ProductSummaryResponse {
         this.status = status;
     }
 
-
+    // Constructor dùng cho SqlResultSetMapping với String status
+    public ProductSummaryResponse(Long id, String name, String sku, BigDecimal price, String unit, String imageUrl, Long categoryId, String categoryName, String status) {
+        this(id, name, sku, price, unit, imageUrl, categoryId, categoryName, status != null ? ProductStatus.valueOf(status) : null);
+    }
 }

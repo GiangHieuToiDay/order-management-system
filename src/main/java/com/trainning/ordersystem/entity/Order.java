@@ -1,5 +1,8 @@
 package com.trainning.ordersystem.entity;
 
+import com.trainning.ordersystem.dto.response.order.OrderDetailResponse;
+import com.trainning.ordersystem.dto.response.order.OrderSummaryResponse;
+import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
 import com.trainning.ordersystem.entity.enums.PaymentMethod;
 import jakarta.persistence.*;
@@ -24,6 +27,68 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@SqlResultSetMapping(
+        name = "OrderDetailResponseMapping",
+        classes = @ConstructorResult(
+                targetClass = OrderDetailResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "orderCode", type = String.class),
+                        @ColumnResult(name = "customerId", type = Long.class),
+                        @ColumnResult(name = "customerName", type = String.class),
+                        @ColumnResult(name = "customerEmail", type = String.class),
+                        @ColumnResult(name = "customerPhone", type = String.class),
+                        @ColumnResult(name = "recipientName", type = String.class),
+                        @ColumnResult(name = "recipientPhone", type = String.class),
+                        @ColumnResult(name = "shippingAddress", type = String.class),
+                        @ColumnResult(name = "note", type = String.class),
+                        @ColumnResult(name = "totalAmount", type = BigDecimal.class),
+                        @ColumnResult(name = "status", type = String.class),
+                        @ColumnResult(name = "paymentMethod", type = String.class),
+                        @ColumnResult(name = "createdAt", type = LocalDateTime.class),
+                        @ColumnResult(name = "updatedAt", type = LocalDateTime.class)
+                }
+        )
+)
+@SqlResultSetMapping(
+        name = "OrderSummaryResponseMapping",
+        classes = @ConstructorResult(
+                targetClass = OrderSummaryResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "orderCode", type = String.class),
+                        @ColumnResult(name = "customerId", type = Long.class),
+                        @ColumnResult(name = "customerName", type = String.class),
+                        @ColumnResult(name = "recipientName", type = String.class),
+                        @ColumnResult(name = "totalAmount", type = BigDecimal.class),
+                        @ColumnResult(name = "status", type = String.class),
+                        @ColumnResult(name = "paymentMethod", type = String.class),
+                        @ColumnResult(name = "totalItems", type = Integer.class),
+                        @ColumnResult(name = "createdAt", type = LocalDateTime.class)
+                }
+        )
+)
+@SqlResultSetMapping(
+        name = "OrderRevenueStatisticMapping",
+        classes = @ConstructorResult(
+                targetClass = OrderRevenueStatisticResponse.class,
+                columns = {
+                        @ColumnResult(name = "period", type = String.class),
+                        @ColumnResult(name = "customerId", type = Long.class),
+                        @ColumnResult(name = "customerName", type = String.class),
+                        @ColumnResult(name = "customerPhone", type = String.class),
+                        @ColumnResult(name = "customerEmail", type = String.class),
+                        @ColumnResult(name = "totalOrders", type = Long.class),
+                        @ColumnResult(name = "completedOrders", type = Long.class),
+                        @ColumnResult(name = "confirmedOrders", type = Long.class),
+                        @ColumnResult(name = "cancelledOrders", type = Long.class),
+                        @ColumnResult(name = "pendingOrders", type = Long.class),
+                        @ColumnResult(name = "totalRevenue", type = BigDecimal.class),
+                        @ColumnResult(name = "successRate", type = Double.class),
+                        @ColumnResult(name = "cancellationRate", type = Double.class)
+                }
+        )
+)
 public class Order {
 
     @Id

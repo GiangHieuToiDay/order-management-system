@@ -20,4 +20,9 @@ public class CategoryResponse {
     private CategoryStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Constructor dùng cho SqlResultSetMapping với String status
+    public CategoryResponse(Long id, String name, String description, String status, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this(id, name, description, status != null ? CategoryStatus.valueOf(status) : null, createdAt, updatedAt);
+    }
 }

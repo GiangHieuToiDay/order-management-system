@@ -54,4 +54,31 @@ public class UserProfileResponse {
         this.address = address;
         this.membershipLevel = membershipLevel;
     }
+
+    // Constructor dùng cho SqlResultSetMapping
+    public UserProfileResponse(
+            Long id,
+            String fullName,
+            String email,
+            String phone,
+            String role,
+            String status,
+            LocalDateTime createdAt,
+            Long customerId,
+            String address,
+            String membershipLevel
+    ) {
+        this(
+                id,
+                fullName,
+                email,
+                phone,
+                role,
+                status != null ? UserStatus.valueOf(status) : null,
+                createdAt,
+                customerId,
+                address,
+                membershipLevel != null ? MembershipLevel.valueOf(membershipLevel) : null
+        );
+    }
 }

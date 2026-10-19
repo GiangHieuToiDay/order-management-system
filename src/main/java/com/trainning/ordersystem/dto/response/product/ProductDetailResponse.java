@@ -65,6 +65,26 @@ public class ProductDetailResponse {
         this.updatedAt = updatedAt;
     }
 
+    // Constructor dùng cho SqlResultSetMapping với String status
+    public ProductDetailResponse(
+            Long id,
+            String name,
+            String sku,
+            BigDecimal price,
+            String unit,
+            Integer stockQuantity,
+            String description,
+            String imageUrl,
+            Long categoryId,
+            String categoryName,
+            String status,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+        this(id, name, sku, price, unit, stockQuantity, description, imageUrl, categoryId, categoryName,
+                status != null ? ProductStatus.valueOf(status) : null, createdAt, updatedAt);
+    }
+
     public static ProductDetailResponse from(com.trainning.ordersystem.entity.Product product) {
         if (product == null) return null;
         var category = product.getCategory();

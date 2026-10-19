@@ -3,7 +3,7 @@ package com.trainning.ordersystem.repository;
 import com.trainning.ordersystem.dto.response.cart.CartItemResponse;
 import com.trainning.ordersystem.entity.CartItem;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -15,21 +15,23 @@ import java.util.Optional;
 public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     List<CartItem> findByCustomerId(Long customerId);
 
-    @Query("""
-        SELECT new com.trainning.ordersystem.dto.response.cart.CartItemResponse(
-            ci.id,
-            p.id,
-            p.name,
-            p.sku,
-            p.imageUrl,
-            p.price,
-            ci.quantity
-        )
-        FROM CartItem ci
-        LEFT JOIN ci.product p
-        WHERE ci.customer.id = :customerId
-    """)
+    @NativeQuery(
+        value = """
+            SELECT ci.id AS id,
+                   p.id AS productId,
+                   p.name AS productName,
+                   p.sku AS productSku,
+                   p.image_url AS productImage,
+                   p.price AS unitPrice,
+                   ci.quantity AS quantity
+            FROM cart_items ci
+            LEFT JOIN products p ON ci.product_id = p.id
+            WHERE ci.customer_id = :customerId
+        """,
+        sqlResultSetMapping = "CartItemResponseMapping"
+    )
     List<CartItemResponse> findItemResponsesByCustomerId(@Param("customerId") Long customerId);
+
     List<CartItem> findByIdInAndCustomerId(Collection<Long> ids, Long customerId);
     Optional<CartItem> findByCustomerIdAndProductId(Long customerId, Long productId);
     void deleteByCustomerId(Long customerId);

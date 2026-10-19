@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.entity;
 
+import com.trainning.ordersystem.dto.response.cart.CartItemResponse;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -7,6 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,6 +23,21 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@SqlResultSetMapping(
+        name = "CartItemResponseMapping",
+        classes = @ConstructorResult(
+                targetClass = CartItemResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "productId", type = Long.class),
+                        @ColumnResult(name = "productName", type = String.class),
+                        @ColumnResult(name = "productSku", type = String.class),
+                        @ColumnResult(name = "productImage", type = String.class),
+                        @ColumnResult(name = "unitPrice", type = BigDecimal.class),
+                        @ColumnResult(name = "quantity", type = Integer.class)
+                }
+        )
+)
 public class CartItem {
 
     @Id

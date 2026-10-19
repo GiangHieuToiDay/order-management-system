@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.entity;
 
+import com.trainning.ordersystem.dto.response.product.ProductDetailResponse;
 import com.trainning.ordersystem.dto.response.product.ProductSummaryResponse;
 import com.trainning.ordersystem.entity.enums.ProductStatus;
 import jakarta.persistence.*;
@@ -22,23 +23,44 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
-//@SqlResultSetMapping(
-//        name = "ProductSummaryMapping",
-//        classes = @ConstructorResult(
-//                targetClass = ProductSummaryResponse.class,
-//                columns = {
-//                        @ColumnResult(name = "id", type = Long.class),
-//                        @ColumnResult(name = "name", type = String.class),
-//                        @ColumnResult(name = "sku", type = String.class),
-//                        @ColumnResult(name = "price", type = BigDecimal.class),
-//                        @ColumnResult(name = "unit", type = String.class),
-//                        @ColumnResult(name = "imageUrl", type = String.class),
-//                        @ColumnResult(name = "categoryId", type = Long.class),
-//                        @ColumnResult(name = "categoryName", type = String.class),
-//                        @ColumnResult(name = "status", type = String.class)
-//                }
-//        )
-//)
+@SqlResultSetMapping(
+        name = "ProductDetailMapping",
+        classes = @ConstructorResult(
+                targetClass = ProductDetailResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "name", type = String.class),
+                        @ColumnResult(name = "sku", type = String.class),
+                        @ColumnResult(name = "price", type = BigDecimal.class),
+                        @ColumnResult(name = "unit", type = String.class),
+                        @ColumnResult(name = "stockQuantity", type = Integer.class),
+                        @ColumnResult(name = "description", type = String.class),
+                        @ColumnResult(name = "imageUrl", type = String.class),
+                        @ColumnResult(name = "categoryId", type = Long.class),
+                        @ColumnResult(name = "categoryName", type = String.class),
+                        @ColumnResult(name = "status", type = String.class),
+                        @ColumnResult(name = "createdAt", type = LocalDateTime.class),
+                        @ColumnResult(name = "updatedAt", type = LocalDateTime.class)
+                }
+        )
+)
+@SqlResultSetMapping(
+        name = "ProductSummaryMapping",
+        classes = @ConstructorResult(
+                targetClass = ProductSummaryResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "name", type = String.class),
+                        @ColumnResult(name = "sku", type = String.class),
+                        @ColumnResult(name = "price", type = BigDecimal.class),
+                        @ColumnResult(name = "unit", type = String.class),
+                        @ColumnResult(name = "imageUrl", type = String.class),
+                        @ColumnResult(name = "categoryId", type = Long.class),
+                        @ColumnResult(name = "categoryName", type = String.class),
+                        @ColumnResult(name = "status", type = String.class)
+                }
+        )
+)
 public class Product {
 
     @Id

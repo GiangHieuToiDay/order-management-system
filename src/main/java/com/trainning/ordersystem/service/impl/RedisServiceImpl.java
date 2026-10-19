@@ -158,7 +158,7 @@ public class RedisServiceImpl implements RedisService {
         boolean isLocked = false;
 
         try {
-            isLocked = multiLock.tryLock(3,  TimeUnit.SECONDS);
+            isLocked = multiLock.tryLock(3, 15 , TimeUnit.SECONDS);
 
             if (!isLocked) {
                 throw new AppException(

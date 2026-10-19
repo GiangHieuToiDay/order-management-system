@@ -54,7 +54,8 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public PageResponse<CategoryResponse> getCategories(int page, int size, String keyword, CategoryStatus status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<CategoryResponse> categoryPage = categoryRepository.searchCategoryResponses(keyword, status, pageable);
+        String statusStr = status != null ? status.name() : null;
+        Page<CategoryResponse> categoryPage = categoryRepository.searchCategoryResponses(keyword, statusStr, pageable);
 
         return PageResponse.<CategoryResponse>builder()
                 .content(categoryPage.getContent())
@@ -69,7 +70,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<CategoryResponse> getActiveCategories() {
-        return categoryRepository.findCategoryResponsesByStatus(CategoryStatus.ACTIVE);
+        return categoryRepository.findCategoryResponsesByStatus(CategoryStatus.ACTIVE.name());
     }
 
 

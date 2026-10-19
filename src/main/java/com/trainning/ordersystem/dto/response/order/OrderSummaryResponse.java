@@ -26,4 +26,31 @@ public class OrderSummaryResponse {
     private PaymentMethod paymentMethod;
     private int totalItems;
     private LocalDateTime createdAt;
+
+    // Constructor dùng cho SqlResultSetMapping
+    public OrderSummaryResponse(
+            Long id,
+            String orderCode,
+            Long customerId,
+            String customerName,
+            String recipientName,
+            BigDecimal totalAmount,
+            String status,
+            String paymentMethod,
+            Integer totalItems,
+            LocalDateTime createdAt
+    ) {
+        this(
+                id,
+                orderCode,
+                customerId,
+                customerName,
+                recipientName,
+                totalAmount,
+                status != null ? OrderStatus.valueOf(status) : null,
+                paymentMethod != null ? PaymentMethod.valueOf(paymentMethod) : null,
+                totalItems != null ? totalItems : 0,
+                createdAt
+        );
+    }
 }

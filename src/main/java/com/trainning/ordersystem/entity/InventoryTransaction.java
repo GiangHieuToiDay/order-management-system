@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.entity;
 
+import com.trainning.ordersystem.dto.response.inventory.InventoryTransactionResponse;
 import com.trainning.ordersystem.entity.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -18,6 +19,24 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
+@SqlResultSetMapping(
+        name = "InventoryTransactionResponseMapping",
+        classes = @ConstructorResult(
+                targetClass = InventoryTransactionResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "productId", type = Long.class),
+                        @ColumnResult(name = "productName", type = String.class),
+                        @ColumnResult(name = "productSku", type = String.class),
+                        @ColumnResult(name = "type", type = String.class),
+                        @ColumnResult(name = "quantity", type = Integer.class),
+                        @ColumnResult(name = "note", type = String.class),
+                        @ColumnResult(name = "createdBy", type = Long.class),
+                        @ColumnResult(name = "createdByName", type = String.class),
+                        @ColumnResult(name = "createdAt", type = LocalDateTime.class)
+                }
+        )
+)
 public class InventoryTransaction {
 
     @Id

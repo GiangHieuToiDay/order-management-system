@@ -6,6 +6,7 @@ import com.trainning.ordersystem.entity.enums.CategoryStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -29,39 +30,57 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
                                    @Param("status") CategoryStatus status,
                                    Pageable pageable);
 
-    @Query(value = """
-        SELECT new com.trainning.ordersystem.dto.response.category.CategoryResponse(
-            c.id, c.name, c.description, c.status, c.createdAt, c.updatedAt
-        )
-        FROM Category c
-        WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
-          AND (:status IS NULL OR c.status = :status)
-    """,
-    countQuery = """
-        SELECT COUNT(c)
-        FROM Category c
-        WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
-          AND (:status IS NULL OR c.status = :status)
-    """)
+    @NativeQuery(
+        value = """
+            SELECT c.id AS id,
+                   c.name AS name,
+                   c.description AS description,
+                   c.status AS status,
+                   c.created_at AS createdAt,
+                   c.updated_at AS updatedAt
+            FROM categories c
+            WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:status IS NULL OR c.status = :status)
+        """,
+        countQuery = """
+            SELECT COUNT(c.id)
+            FROM categories c
+            WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:status IS NULL OR c.status = :status)
+        """,
+        sqlResultSetMapping = "CategoryResponseMapping"
+    )
     Page<CategoryResponse> searchCategoryResponses(@Param("keyword") String keyword,
-                                                   @Param("status") CategoryStatus status,
+                                                   @Param("status") String status,
                                                    Pageable pageable);
 
-    @Query("""
-        SELECT new com.trainning.ordersystem.dto.response.category.CategoryResponse(
-            c.id, c.name, c.description, c.status, c.createdAt, c.updatedAt
-        )
-        FROM Category c
-        WHERE c.status = :status
-    """)
-    List<CategoryResponse> findCategoryResponsesByStatus(@Param("status") CategoryStatus status);
+    @NativeQuery(
+        value = """
+            SELECT c.id AS id,
+                   c.name AS name,
+                   c.description AS description,
+                   c.status AS status,
+                   c.created_at AS createdAt,
+                   c.updated_at AS updatedAt
+            FROM categories c
+            WHERE c.status = :status
+        """,
+        sqlResultSetMapping = "CategoryResponseMapping"
+    )
+    List<CategoryResponse> findCategoryResponsesByStatus(@Param("status") String status);
 
-    @Query("""
-        SELECT new com.trainning.ordersystem.dto.response.category.CategoryResponse(
-            c.id, c.name, c.description, c.status, c.createdAt, c.updatedAt
-        )
-        FROM Category c
-        WHERE c.id = :id
-    """)
+    @NativeQuery(
+        value = """
+            SELECT c.id AS id,
+                   c.name AS name,
+                   c.description AS description,
+                   c.status AS status,
+                   c.created_at AS createdAt,
+                   c.updated_at AS updatedAt
+            FROM categories c
+            WHERE c.id = :id
+        """,
+        sqlResultSetMapping = "CategoryResponseMapping"
+    )
     Optional<CategoryResponse> findCategoryResponseById(@Param("id") Long id);
 }

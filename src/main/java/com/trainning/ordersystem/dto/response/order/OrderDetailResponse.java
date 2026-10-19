@@ -11,6 +11,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import org.hibernate.Hibernate;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -47,18 +49,45 @@ public class OrderDetailResponse {
     public static OrderDetailResponse from(Order order, List<OrderItemResponse> items) {
         if (order == null) return null;
 
-        Customer customer = order.getCustomer();
-        User user = (customer != null) ? customer.getUser() : null;
+        Customer customer = null;
+        User user = null;
+        try {
+            customer = order.getCustomer();
+            if (customer != null && Hibernate.isInitialized(customer)) {
+                if (Hibernate.isInitialized(customer.getUser())) {
+                    user = customer.getUser();
+                }
+            }
+        } catch (Exception ignored) {
+            user = null;
+        }
+
+        String customerName = null;
+        String customerEmail = null;
+        String customerPhone = null;
+        String recipientName = null;
+        String recipientPhone = null;
+
+        if (user != null) {
+            try {
+                customerName = user.getFullName();
+                customerEmail = user.getEmail();
+                customerPhone = user.getPhone();
+                recipientName = user.getFullName();
+                recipientPhone = user.getPhone();
+            } catch (Exception ignored) {
+            }
+        }
 
         return OrderDetailResponse.builder()
                 .id(order.getId())
                 .orderCode(order.getOrderCode())
                 .customerId(customer != null ? customer.getId() : null)
-                .customerName(user != null ? user.getFullName() : null)
-                .customerEmail(user != null ? user.getEmail() : null)
-                .customerPhone(user != null ? user.getPhone() : null)
-                .recipientName(user != null ? user.getFullName() : null)
-                .recipientPhone(user != null ? user.getPhone() : null)
+                .customerName(customerName)
+                .customerEmail(customerEmail)
+                .customerPhone(customerPhone)
+                .recipientName(recipientName)
+                .recipientPhone(recipientPhone)
                 .shippingAddress(order.getShippingAddress())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus())
@@ -74,11 +103,14 @@ public class OrderDetailResponse {
 
         List<OrderItemResponse> itemResponses = new ArrayList<>();
 
-        if (order.getOrderItems() != null) {
-            for (OrderItem item : order.getOrderItems()) {
-                OrderItemResponse response = OrderItemResponse.from(item);
-                itemResponses.add(response);
+        try {
+            if (order.getOrderItems() != null && Hibernate.isInitialized(order.getOrderItems())) {
+                for (OrderItem item : order.getOrderItems()) {
+                    OrderItemResponse response = OrderItemResponse.from(item);
+                    itemResponses.add(response);
+                }
             }
+        } catch (Exception ignored) {
         }
 
         return from(order, itemResponses);
@@ -119,5 +151,40 @@ public class OrderDetailResponse {
         this.updatedAt = updatedAt;
     }
 
-
+    // Constructor dùng cho SqlResultSetMapping
+    public OrderDetailResponse(
+            Long id,
+            String orderCode,
+            Long customerId,
+            String customerName,
+            String customerEmail,
+            String customerPhone,
+            String recipientName,
+            String recipientPhone,
+            String shippingAddress,
+            String note,
+            BigDecimal totalAmount,
+            String status,
+            String paymentMethod,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+        this(
+                id,
+                orderCode,
+                customerId,
+                customerName,
+                customerEmail,
+                customerPhone,
+                recipientName,
+                recipientPhone,
+                shippingAddress,
+                note,
+                totalAmount,
+                status != null ? OrderStatus.valueOf(status) : null,
+                paymentMethod != null ? PaymentMethod.valueOf(paymentMethod) : null,
+                createdAt,
+                updatedAt
+        );
+    }
 }

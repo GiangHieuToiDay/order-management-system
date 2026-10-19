@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.entity;
 
+import com.trainning.ordersystem.dto.response.order.OrderItemResponse;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,22 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @NoArgsConstructor
+@SqlResultSetMapping(
+        name = "OrderItemResponseMapping",
+        classes = @ConstructorResult(
+                targetClass = OrderItemResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "productId", type = Long.class),
+                        @ColumnResult(name = "productName", type = String.class),
+                        @ColumnResult(name = "productSku", type = String.class),
+                        @ColumnResult(name = "productImage", type = String.class),
+                        @ColumnResult(name = "unitPrice", type = BigDecimal.class),
+                        @ColumnResult(name = "quantity", type = Integer.class),
+                        @ColumnResult(name = "subTotal", type = BigDecimal.class)
+                }
+        )
+)
 public class OrderItem {
 
     @Id

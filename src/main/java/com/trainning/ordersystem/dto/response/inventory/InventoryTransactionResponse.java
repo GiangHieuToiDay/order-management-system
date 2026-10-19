@@ -50,4 +50,31 @@ public class InventoryTransactionResponse {
         this.createdByName = createdByName;
         this.createdAt = createdAt;
     }
+
+    // Constructor dùng cho SqlResultSetMapping
+    public InventoryTransactionResponse(
+            Long id,
+            Long productId,
+            String productName,
+            String productSku,
+            String type,
+            Integer quantity,
+            String note,
+            Long createdBy,
+            String createdByName,
+            LocalDateTime createdAt
+    ) {
+        this(
+                id,
+                productId,
+                productName,
+                productSku,
+                type != null ? TransactionType.valueOf(type) : null,
+                quantity,
+                note,
+                createdBy,
+                createdByName,
+                createdAt
+        );
+    }
 }

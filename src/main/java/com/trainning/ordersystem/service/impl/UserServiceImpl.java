@@ -270,7 +270,8 @@ public class UserServiceImpl implements UserService {
     @Override
     public PageResponse<UserProfileResponse> getUsers(int page, int size, String keyword, Long roleId, UserStatus status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<UserProfileResponse> usersPage = userRepository.searchUsers(keyword, roleId, status, pageable);
+        String statusStr = status != null ? status.name() : null;
+        Page<UserProfileResponse> usersPage = userRepository.searchUsers(keyword, roleId, statusStr, pageable);
 
         List<UserProfileResponse> responses = usersPage.getContent().stream().toList();
 

@@ -103,7 +103,7 @@ public class ProductServiceImpl implements ProductService {
                     productRepository.searchProductSummaries(
                             request.getKeyword(),
                             request.getCategoryId(),
-                            request.getStatus(),
+                            request.getStatus() != null ? request.getStatus().name() : null,
                             request.getMinPrice(),
                             request.getMaxPrice(),
                             buildPageable(request)

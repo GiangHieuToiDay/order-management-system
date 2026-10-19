@@ -9,9 +9,7 @@ import com.trainning.ordersystem.entity.*;
 import com.trainning.ordersystem.entity.enums.OrderStatus;
 import com.trainning.ordersystem.entity.enums.PaymentMethod;
 import com.trainning.ordersystem.dto.request.order.OrderItemRequest;
-import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticProjection;
 import com.trainning.ordersystem.dto.response.report.OrderRevenueStatisticResponse;
-import com.trainning.ordersystem.dto.response.report.PeriodOrderDetailResponse;
 import com.trainning.ordersystem.messaging.event.order.OrderCreatedEvent;
 import com.trainning.ordersystem.messaging.event.order.OrderItemEvent;
 import com.trainning.ordersystem.repository.CartItemRepository;
@@ -39,8 +37,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -59,6 +57,7 @@ public class OrderServiceImpl implements OrderService {
     private final TransactionTemplate orderTransactionTemplate;
 
     @Override
+    @Transactional
     public OrderDetailResponse placeOrder( CreateOrderRequest request) {
         CustomUserDetails userDetails = SecurityUtils.getCurrentUserDetails();
         Long customerId = userDetails.getCustomerId();
@@ -68,7 +67,7 @@ public class OrderServiceImpl implements OrderService {
         List<Long> productIds = extractProductIds(customerId, request);
 
         return redisService.executeWithProductLocks(productIds,
-                () -> orderTransactionTemplate.execute(status -> doPlaceOrder(customerId, request)));
+                () -> doPlaceOrder(customerId, request));
     }
 
     private OrderDetailResponse doPlaceOrder(Long customerId, CreateOrderRequest request) {
@@ -146,7 +145,8 @@ public class OrderServiceImpl implements OrderService {
         log.info("[ORDER][SEARCH] Tìm kiếm đơn hàng | keyword={}, status={}, page={}, size={}", keyword, status, page, size);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<OrderSummaryResponse> orderPage = orderRepository.searchOrders(keyword, status, pageable);
+        String statusStr = status != null ? status.name() : null;
+        Page<OrderSummaryResponse> orderPage = orderRepository.searchOrders(keyword, statusStr, pageable);
 
         return toPageResponse(orderPage);
     }
@@ -217,58 +217,33 @@ public class OrderServiceImpl implements OrderService {
                 ? endDate.atTime(LocalTime.MAX)
                 : LocalDateTime.now();
 
-        String normalizedGroupBy = (groupBy != null && groupBy.equalsIgnoreCase("DAY")) ? "DAY" : "MONTH";
+        String normalizedGroupBy = "DAY".equalsIgnoreCase(groupBy) ? "DAY" : "MONTH";
 
-        List<OrderRevenueStatisticProjection> projections = orderRepository.getOrderRevenueStatistics(
+        List<OrderRevenueStatisticResponse> rawRows = orderRepository.getOrderRevenueStatistics(
                 startDateTime, endDateTime, normalizedGroupBy
         );
 
-        List<PeriodOrderDetailResponse> orderDetails = orderRepository.findPeriodOrderDetails(
-                startDateTime, endDateTime, List.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED)
-        );
+        // 1. Lọc ra các dòng Cha (Tổng của Kỳ: có customerId == null)
+        List<OrderRevenueStatisticResponse> periodList = rawRows.stream()
+                .filter(row -> row.getCustomerId() == null)
+                .toList();
 
-        DateTimeFormatter formatter = "DAY".equals(normalizedGroupBy)
-                ? DateTimeFormatter.ofPattern("yyyy-MM-dd")
-                : DateTimeFormatter.ofPattern("yyyy-MM");
+        // 2. Gom nhóm các dòng Con (Chi tiết từng User: có customerId != null) theo period
+        Map<String, List<OrderRevenueStatisticResponse>> customerDetailsByPeriod = rawRows.stream()
+                .filter(row -> row.getCustomerId() != null)
+                .collect(Collectors.groupingBy(OrderRevenueStatisticResponse::getPeriod)); // nhóm các đơn có cùng period li
 
-        Map<String, List<PeriodOrderDetailResponse>> ordersByPeriod = new HashMap<>();
-
-        for (PeriodOrderDetailResponse order : orderDetails) {
-            if (order.getCreatedAt() == null) {
-                continue;
-            }
-
-            String date = order.getCreatedAt().format(formatter);
-
-            if (!ordersByPeriod.containsKey(date)) {
-                ordersByPeriod.put(date, new ArrayList<>());
-            }
-
-            ordersByPeriod.get(date).add(order);
+        // 3. Gắn danh sách User vào từng Kỳ tương ứng
+        for (OrderRevenueStatisticResponse periodStat : periodList) {
+            List<OrderRevenueStatisticResponse> details = customerDetailsByPeriod.getOrDefault(
+                    periodStat.getPeriod(), Collections.emptyList()
+            );
+            // Xóa period ở cấp con để JSON trả về không bị lặp lại trường "period"
+            details.forEach(d -> d.setPeriod(null));
+            periodStat.setCustomerDetails(details);
         }
 
-        List<OrderRevenueStatisticResponse> responses = new ArrayList<>();
-
-        for (OrderRevenueStatisticProjection p : projections) {
-            OrderRevenueStatisticResponse response =
-                    OrderRevenueStatisticResponse.builder()
-                            .period(p.getPeriod())
-                            .totalOrders(p.getTotalOrders())
-                            .completedOrders(p.getCompletedOrders())
-                            .confirmedOrders(p.getConfirmedOrders())
-                            .cancelledOrders(p.getCancelledOrders())
-                            .pendingOrders(p.getPendingOrders())
-                            .totalRevenue(p.getTotalRevenue())
-                            .successRate(p.getSuccessRate())
-                            .cancellationRate(p.getCancellationRate())
-                            .orders(ordersByPeriod.getOrDefault(
-                                    p.getPeriod(), Collections.emptyList()))
-                            .build();
-
-            responses.add(response);
-        }
-
-        return responses;
+        return periodList;
     }
 
     private List<Long> extractProductIds(Long customerId, CreateOrderRequest request) {

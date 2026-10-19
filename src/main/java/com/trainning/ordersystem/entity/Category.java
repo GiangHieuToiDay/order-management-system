@@ -1,5 +1,6 @@
 package com.trainning.ordersystem.entity;
 
+import com.trainning.ordersystem.dto.response.category.CategoryResponse;
 import com.trainning.ordersystem.entity.enums.CategoryStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -17,6 +18,20 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@SqlResultSetMapping(
+        name = "CategoryResponseMapping",
+        classes = @ConstructorResult(
+                targetClass = CategoryResponse.class,
+                columns = {
+                        @ColumnResult(name = "id", type = Long.class),
+                        @ColumnResult(name = "name", type = String.class),
+                        @ColumnResult(name = "description", type = String.class),
+                        @ColumnResult(name = "status", type = String.class),
+                        @ColumnResult(name = "createdAt", type = LocalDateTime.class),
+                        @ColumnResult(name = "updatedAt", type = LocalDateTime.class)
+                }
+        )
+)
 public class Category {
 
     @Id

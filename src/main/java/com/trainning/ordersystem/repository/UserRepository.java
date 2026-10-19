@@ -1,18 +1,15 @@
 package com.trainning.ordersystem.repository;
 
 import com.trainning.ordersystem.dto.response.auth.UserProfileResponse;
-import com.trainning.ordersystem.dto.response.product.ProductSummaryResponse;
 import com.trainning.ordersystem.entity.User;
-import com.trainning.ordersystem.entity.enums.ProductStatus;
-import com.trainning.ordersystem.entity.enums.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 @Repository
@@ -26,69 +23,106 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-
-    @Query(
-            value = """
-            SELECT new com.trainning.ordersystem.dto.response.auth.UserProfileResponse(
-                u.id, u.fullName, u.email, u.phone, r.name, u.status, u.createdAt, c.id, c.address, c.membershipLevel
-            )
-            FROM User u
-            LEFT JOIN u.role r
-            LEFT JOIN u.customer c
+    @NativeQuery(
+        value = """
+            SELECT u.id AS id,
+                   u.full_name AS fullName,
+                   u.email AS email,
+                   u.phone AS phone,
+                   r.name AS role,
+                   u.status AS status,
+                   u.created_at AS createdAt,
+                   c.id AS customerId,
+                   c.address AS address,
+                   c.membership_level AS membershipLevel
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN customers c ON c.user_id = u.id
             WHERE (:keyword IS NULL OR :keyword = '' 
-                   OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+                   OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
                    OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:roleId IS NULL OR r.id = :roleId)
               AND (:status IS NULL OR u.status = :status)
         """,
-            countQuery = """
-            SELECT COUNT(u)
-            FROM User u
-            LEFT JOIN u.role r
+        countQuery = """
+            SELECT COUNT(u.id)
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
             WHERE (:keyword IS NULL OR :keyword = '' 
-                   OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) 
+                   OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :keyword, '%')) 
                    OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')))
               AND (:roleId IS NULL OR r.id = :roleId)
               AND (:status IS NULL OR u.status = :status)
-        """
+        """,
+        sqlResultSetMapping = "UserProfileResponseMapping"
     )
     Page<UserProfileResponse> searchUsers(
             @Param("keyword") String keyword,
             @Param("roleId") Long roleId,
-            @Param("status") UserStatus status,
+            @Param("status") String status,
             Pageable pageable
     );
 
-    @Query("""
-        SELECT new com.trainning.ordersystem.dto.response.auth.UserProfileResponse(
-            u.id, u.fullName, u.email, u.phone, r.name, u.status, u.createdAt, c.id, c.address, c.membershipLevel
-        )
-        FROM User u
-        LEFT JOIN u.role r
-        LEFT JOIN u.customer c
-        WHERE u.id = :userId
-    """)
+    @NativeQuery(
+        value = """
+            SELECT u.id AS id,
+                   u.full_name AS fullName,
+                   u.email AS email,
+                   u.phone AS phone,
+                   r.name AS role,
+                   u.status AS status,
+                   u.created_at AS createdAt,
+                   c.id AS customerId,
+                   c.address AS address,
+                   c.membership_level AS membershipLevel
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN customers c ON c.user_id = u.id
+            WHERE u.id = :userId
+        """,
+        sqlResultSetMapping = "UserProfileResponseMapping"
+    )
     Optional<UserProfileResponse> findProfileById(@Param("userId") Long userId);
 
-    @Query("""
-        SELECT new com.trainning.ordersystem.dto.response.auth.UserProfileResponse(
-            u.id, u.fullName, u.email, u.phone, r.name, u.status, u.createdAt, c.id, c.address, c.membershipLevel
-        )
-        FROM User u
-        LEFT JOIN u.role r
-        JOIN u.customer c
-        WHERE c.id = :customerId
-    """)
+    @NativeQuery(
+        value = """
+            SELECT u.id AS id,
+                   u.full_name AS fullName,
+                   u.email AS email,
+                   u.phone AS phone,
+                   r.name AS role,
+                   u.status AS status,
+                   u.created_at AS createdAt,
+                   c.id AS customerId,
+                   c.address AS address,
+                   c.membership_level AS membershipLevel
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            JOIN customers c ON c.user_id = u.id
+            WHERE c.id = :customerId
+        """,
+        sqlResultSetMapping = "UserProfileResponseMapping"
+    )
     Optional<UserProfileResponse> findProfileByCustomerId(@Param("customerId") Long customerId);
 
-    @Query("""
-        SELECT new com.trainning.ordersystem.dto.response.auth.UserProfileResponse(
-            u.id, u.fullName, u.email, u.phone, r.name, u.status, u.createdAt, c.id, c.address, c.membershipLevel
-        )
-        FROM User u
-        LEFT JOIN u.role r
-        LEFT JOIN u.customer c
-        WHERE u.email = :email
-    """)
+    @NativeQuery(
+        value = """
+            SELECT u.id AS id,
+                   u.full_name AS fullName,
+                   u.email AS email,
+                   u.phone AS phone,
+                   r.name AS role,
+                   u.status AS status,
+                   u.created_at AS createdAt,
+                   c.id AS customerId,
+                   c.address AS address,
+                   c.membership_level AS membershipLevel
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN customers c ON c.user_id = u.id
+            WHERE u.email = :email
+        """,
+        sqlResultSetMapping = "UserProfileResponseMapping"
+    )
     Optional<UserProfileResponse> findProfileByEmail(@Param("email") String email);
 }
